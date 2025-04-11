@@ -46,15 +46,15 @@ Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 
 # OpenRouter configuration - get from environment variables with fallback
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "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")
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "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")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 # Check if API key is present
-if not OPENROUTER_API_KEY or OPENROUTER_API_KEY == "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":
+if not OPENROUTER_API_KEY or OPENROUTER_API_KEY == "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":
     app.logger.warning("OpenRouter API key not set or using fallback value. API calls will likely fail.")
 
 # OpenAI configuration for transcription (using old style API)
-openai.api_key = OPENROUTER_API_KEY
+openai.api_key = "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"
 
 class SermonInput(BaseModel):
     content_type: str  # 'youtube', 'pdf', 'text'
