@@ -1,26 +1,54 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  /* Light Mode Colors from Styling Guide */
+  --background: #FFF8F1; /* cream-white */
+  --foreground: #2F2F5D; /* deep-navy */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Font Variables (already set in layout.tsx, but good practice to declare) */
+  --font-poppins: "Poppins", sans-serif; /* Fallback */
+  --font-inter: "Inter", sans-serif; /* Fallback */
+  --font-fredoka: "Fredoka", sans-serif; /* Fallback */
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Dark Mode Colors from Styling Guide */
+    --background: #1E1F2B; /* deep-blue-grey */
+    --foreground: #F3F1FF; /* light-lavender */
   }
+}
+
+/* Supporting Dark Mode via class for theme switcher */
+.dark {
+  --background: #1E1F2B; /* deep-blue-grey */
+  --foreground: #F3F1FF; /* light-lavender */
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter); /* Use Inter as the default body font */
+}
+
+/* Add smooth scrolling to the entire page */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom animations */
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
 }

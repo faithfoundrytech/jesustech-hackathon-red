@@ -1,0 +1,462 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Clerk Organization Docs
+
+## useOrganization()
+The useOrganization() hook retrieves attributes of the currently active organization.
+
+Parameters
+useOrganization() accepts a single object with the following optional properties:
+
+invitations
+true | { status?: 'pending' | 'accepted' | 'revoked' } & { SharedProperties }
+If set to true, all default properties will be used.
+
+Otherwise, accepts an object with the following optional properties:
+
+status: A string that filters the invitations by the provided status.
+Any of the properties described in Shared properties.
+membershipRequests
+true | { status?: 'pending' | 'accepted' | 'revoked' } & { SharedProperties }
+If set to true, all default properties will be used. Otherwise, accepts an object with the following optional properties:
+
+status: A string that filters the membership requests by the provided status.
+Any of the properties described in Shared properties.
+memberships
+true | { role?: OrganizationCustomRoleKey[]; query?: string } & { SharedProperties }
+If set to true, all default properties will be used.
+
+Otherwise, accepts an object with the following optional properties:
+
+role: An array of OrganizationCustomRoleKey.
+query: A string that filters the memberships by the provided string.
+Any of the properties described in Shared properties.
+domains
+true | { enrollmentMode?: 'manual_invitation' | 'automatic_invitation' | 'automatic_suggestion' } & { SharedProperties }
+If set to true, all default properties will be used.
+
+Otherwise, accepts an object with the following optional properties:
+
+enrollmentMode: A string that filters the domains by the provided enrollment mode.
+Any of the properties described in Shared properties.
+Warning
+
+By default, the memberships, invitations, membershipRequests, and domains attributes aren't populated. To fetch and paginate the data, you must pass true or an object with the desired properties.
+
+Shared properties
+Optional properties that are shared across the invitations, membershipRequests, memberships, and domains properties.
+
+initialPage
+number
+A number that specifies which page to fetch. For example, if initialPage is set to 10, it will skip the first 9 pages and fetch the 10th page. Defaults to 1.
+
+pageSize
+number
+A number that specifies the maximum number of results to return per page. Defaults to 10.
+
+keepPreviousData
+boolean
+If true, the previous data will be kept in the cache until new data is fetched. Defaults to false.
+
+infinite
+boolean
+If true, newly fetched data will be appended to the existing list rather than replacing it. Useful for implementing infinite scroll functionality. Defaults to false.
+
+Note
+
+These attributes are updating automatically and will re-render their respective components whenever you set a different organization using the setActive({ organization }) method or update any of the memberships or invitations. No need for you to manage updating anything manually.
+
+Returns
+isLoaded
+boolean
+A boolean that indicates whether Clerk has completed initialization. Initially false, becomes true once Clerk loads.
+
+organization
+Organization
+The currently active organization.
+
+membership
+OrganizationMembership
+The current organization membership.
+
+memberships
+PaginatedResources<OrganizationMembership>
+Includes a paginated list of the organization's memberships.
+
+invitations
+PaginatedResources<OrganizationInvitation>
+Includes a paginated list of the organization's invitations.
+
+membershipRequests
+PaginatedResources<OrganizationMembershipRequest>
+Includes a paginated list of the organization's membership requests.
+
+domains
+PaginatedResources<OrganizationDomain>
+Includes a paginated list of the organization's domains.
+
+PaginatedResources
+data
+T[]
+An array that contains the fetched data. For example, for the memberships attribute, data will be an array of OrganizationMembership objects.
+
+count
+number
+The total count of data that exist remotely.
+
+isLoading
+boolean
+A boolean that is true if there is an ongoing request and there is no fetched data.
+
+isFetching
+boolean
+A boolean that is true if there is an ongoing request or a revalidation.
+
+isError
+boolean
+A boolean that indicates the request failed.
+
+page
+number
+The current page.
+
+pageCount
+number
+The total amount of pages. It is calculated based on count, initialPage, and pageSize.
+
+fetchPage
+(page: number) => void
+A function that triggers a specific page to be loaded.
+
+fetchPrevious
+() => void
+A function that triggers the previous page to be loaded. This is the same as fetchPage(page => Math.max(0, page - 1)).
+
+fetchNext
+() => void
+A function that triggers the next page to be loaded. This is the same as fetchPage(page => Math.min(pageCount, page + 1)).
+
+hasNextPage
+boolean
+A boolean that indicates if there are available pages to be fetched.
+
+hasPreviousPage
+boolean
+A boolean that indicates if there are available pages to be fetched.
+
+revalidate
+() => void
+A function that triggers a revalidation of the current page.
+
+setData
+(data: any[]) => void
+A function that allows you to set the data manually.
+
+How to use the useOrganization() hook
+Expand and paginate attributes
+To keep network usage to a minimum, developers are required to opt-in by specifying which resource they need to fetch and paginate through. By default, the memberships, invitations, membershipRequests, and domains attributes are not populated. You must pass true or an object with the desired properties to fetch and paginate the data.
+
+
+// invitations.data will never be populated.
+const { invitations } = useOrganization()
+
+// Use default values to fetch invitations, such as initialPage = 1 and pageSize = 10
+const { invitations } = useOrganization({
+  invitations: true,
+})
+
+// Pass your own values to fetch invitations
+const { invitations } = useOrganization({
+  invitations: {
+    pageSize: 20,
+    initialPage: 2, // skips the first page
+  },
+})
+
+// Aggregate pages in order to render an infinite list
+const { invitations } = useOrganization({
+  invitations: {
+    infinite: true,
+  },
+})
+Infinite pagination
+The following example demonstrates how to use the infinite property to fetch and append new data to the existing list. The memberships attribute will be populated with the first page of the organization's memberships. When the "Load more" button is clicked, the fetchNext helper function will be called to append the next page of memberships to the list.
+
+React
+Next.js
+app/users/page.tsx
+
+'use client'
+
+import { useOrganization } from '@clerk/nextjs'
+
+export default function MemberListPage() {
+  const { memberships } = useOrganization({
+    memberships: {
+      infinite: true, // Append new data to the existing list
+      keepPreviousData: true, // Persist the cached data until the new data has been fetched
+    },
+  })
+
+  if (!memberships) {
+    // Handle loading state
+    return null
+  }
+
+  return (
+    <div>
+      <h2>Organization members</h2>
+      <ul>
+        {memberships.data?.map((membership) => (
+          <li key={membership.id}>
+            {membership.publicUserData.firstName} {membership.publicUserData.lastName} &lt;
+            {membership.publicUserData.identifier}&gt; :: {membership.role}
+          </li>
+        ))}
+      </ul>
+
+      <button
+        disabled={!memberships.hasNextPage} // Disable the button if there are no more available pages to be fetched
+        onClick={memberships.fetchNext}
+      >
+        Load more
+      </button>
+    </div>
+  )
+}
+Simple pagination
+The following example demonstrates how to use the fetchPrevious and fetchNext helper functions to paginate through the data. The memberships attribute will be populated with the first page of the organization's memberships. When the "Previous page" or "Next page" button is clicked, the fetchPrevious or fetchNext helper function will be called to fetch the previous or next page of memberships.
+
+Notice the difference between this example's pagination and the infinite pagination example above.
+
+React
+Next.js
+app/users/page.tsx
+
+'use client'
+
+import { useOrganization } from '@clerk/nextjs'
+
+export default function MemberListPage() {
+  const { memberships } = useOrganization({
+    memberships: {
+      keepPreviousData: true, // Persist the cached data until the new data has been fetched
+    },
+  })
+
+  if (!memberships) {
+    // Handle loading state
+    return null
+  }
+
+  return (
+    <div>
+      <h2>Organization members</h2>
+      <ul>
+        {memberships.data?.map((membership) => (
+          <li key={membership.id}>
+            {membership.publicUserData.firstName} {membership.publicUserData.lastName} &lt;
+            {membership.publicUserData.identifier}&gt; :: {membership.role}
+          </li>
+        ))}
+      </ul>
+
+      <button disabled={!memberships.hasPreviousPage} onClick={memberships.fetchPrevious}>
+        Previous page
+      </button>
+
+      <button disabled={!memberships.hasNextPage} onClick={memberships.fetchNext}>
+        Next page
+      </button>
+    </div>
+  )
+}
+
+## getOrganizationMembershipList()
+Retrieves a list of organization memberships for a given user. Returns a PaginatedResourceResponse object with a data property that contains an array of OrganizationMembership objects, and a totalCount property that indicates the total number of organization memberships in the system for the specified organization.
+
+
+function getOrganizationMembershipList(
+  params: GetOrganizationMembershipListParams,
+): Promise<PaginatedResourceResponse<OrganizationMembership[]>>
+GetOrganizationMembershipListParams
+userId
+string
+The ID of the user to retrieve the list of organization memberships for.
+
+limit?
+number
+The number of results to return. Must be an integer greater than zero and less than 501. Can be used for paginating the results together with offset. Defaults to 10.
+
+offset?
+number
+Skip the first offset results when paginating. Needs to be an integer greater or equal to zero. To be used in conjunction with limit. Defaults to 0.
+
+Examples
+Note
+
+Importing clerkClient varies based on your framework. Refer to the Backend SDK overview for usage details, including guidance on how to access the userId and other properties.
+
+
+const userId = 'user_123'
+
+const response = await clerkClient.users.getOrganizationMembershipList({ userId })
+Limit the number of results
+Retrieves a list of a user's organization memberships that is filtered by the number of results.
+
+
+const userId = 'user_123'
+
+const { data, totalCount } = await clerkClient.users.getOrganizationMembershipList({
+  userId,
+  // returns the first 10 memberships
+  limit: 10,
+})
+Skip results
+Retrieves a list of a user's organization memberships that is filtered by the number of results to skip.
+
+
+const userId = 'user_123'
+
+const { data, totalCount } = await clerkClient.users.getOrganizationMembershipList({
+  userId,
+  // skips the first 10 memberships
+  offset: 10,
+})
+
+## The Backend Organization object
+The Backend Organization object is similar to the Organization object as it holds information about an organization, as well as methods for managing it. However, the Backend Organization object is different in that it is used in the Backend API and is not directly accessible from the Frontend API.
+
+Properties
+id
+string
+The unique identifier for the organization.
+
+name
+string
+The name of the organization.
+
+slug
+string
+The URL-friendly identifier of the user's active organization. If supplied, it must be unique for the instance.
+
+createdBy?
+string
+The ID of the user who created the organization.
+
+createdAt
+number
+The date when the organization was first created.
+
+updatedAt
+number
+The date when the organization was last updated.
+
+imageUrl
+string
+Holds the organization's logo. Compatible with Clerk's Image Optimization.
+
+hasImage
+boolean
+Whether the organization has an image.
+
+publicMetadata
+OrganizationPublicMetadata
+Metadata that can be read from the Frontend API and Backend API and can be set only from the Backend API.
+
+privateMetadata
+OrganizationPrivateMetadata
+Metadata that can be read and set only from the Backend API.
+
+maxAllowedMemberships
+number
+The maximum number of memberships allowed in the organization.
+
+adminDeleteEnabled
+boolean
+Whether the organization allows admins to delete users.
+
+membersCount?
+number
+The number of members in the organization.
+
+## getOrganization()
+Retrieves a single Organization.
+
+
+function getOrganization(params: GetOrganizationParams): Promise<Organization>
+GetOrganizationParams
+organizationId | slug
+string
+The ID of the organization to retrieve, or the slug of the organization to retrieve.
+
+Examples
+Note
+
+Importing clerkClient varies based on your framework. Refer to the Backend SDK overview for usage details, including guidance on how to access the userId and other properties.
+
+Retrieve by ID
+
+const organizationId = 'org_123'
+
+const response = await clerkClient.organizations.getOrganization({ organizationId })
+
+## getOrganizationMembershipList()
+Retrieves a list of memberships for an organization. Returns a PaginatedResourceResponse object with a data property that contains an array of OrganizationMembership objects, and a totalCount property that indicates the total number of organization memberships in the system for the specified organization.
+
+
+function getOrganizationMembershipList(
+  params: GetOrganizationMembershipListParams,
+): Promise<PaginatedResourceResponse<OrganizationMembership[]>>
+GetOrganizationMembershipListParams
+organizationId
+string
+The ID of the organization to retrieve the list of memberships from.
+
+limit?
+number
+The number of results to return. Must be an integer greater than zero and less than 501. Can be used for paginating the results together with offset. Defaults to 10.
+
+offset?
+number
+Skip the first offset results when paginating. Needs to be an integer greater or equal to zero. To be used in conjunction with limit. Defaults to 0.
+
+orderBy?
+'phone_number' | 'email_address' | 'created_at' | 'first_name' | 'last_name' | 'username'
+Return memberships in a particular order. Prefix with a - to reverse the order. Prefix with a + to list in ascending order. Defaults to '-created_at'.
+
+Examples
+Basic
+Note
+
+Importing clerkClient varies based on your framework. Refer to the Backend SDK overview for usage details, including guidance on how to access the userId and other properties.
+
+
+const organizationId = 'org_2ZUtbk2yvnFGItdeze1ivCh3uqh'
+
+const response = await clerkClient.organizations.getOrganizationMembershipList({ organizationId })
+getOrganizationMembershipList({ organizationId, limit })
+Retrieves organization membership list that is filtered by the number of results.
+
+
+const organizationId = 'org_123'
+
+const { data, totalCount } = await clerkClient.organizations.getOrganizationMembershipList({
+  organizationId,
+  // returns the first 10 memberships
+  limit: 10,
+})
+getOrganizationMembershipList({ organizationId, offset })
+Retrieves organizaiton membership list that is filtered by the number of results to skip.
+
+
+const organizationId = 'org_123'
+
+const { data, totalCount } = await clerkClient.organizations.getOrganizationMembershipList({
+  organizationId,
+  // skips the first 10 memberships
+  offset: 10,
+})

@@ -1,0 +1,69 @@
+---
+description: 
+globs: *.tsx
+alwaysApply: false
+---
+🎨 Play the Word – Styling Guide
+✝️ Brand Tone
+Playful, uplifting, inviting
+
+Geared toward young believers, especially Gen Z
+
+A mix of spiritual purpose and game-night energy
+
+🌈 Color Scheme (Pastel + Playful)
+🎯 Primary Colors:
+Purpose	Color	Hex
+Main Accent / Buttons	Soft Purple	#A88BFE
+Highlight / Call to Action	Warm Peach	#FFD6A5
+Text on Light BG	Deep Navy	#2F2F5D
+💫 Secondary Colors:
+Purpose	Color	Hex
+Background Light	Cream White	#FFF8F1
+Card Backgrounds	Baby Blue	#B8E4F0
+UI Elements	Soft Mint	#C5FAD5
+Info / Tooltip	Lemon Yellow	#F9F871
+🌑 Dark Mode:
+Element	Color	Hex
+Background	Deep Blue Grey	#1E1F2B
+Cards	Soft Indigo	#353565
+Text	Light Lavender	#F3F1FF
+Highlight/CTA	Coral Pink	#FFADAD
+🖋️ Typography
+Use	Font	Style
+Headers / Titles	Poppins	Rounded, Bold
+Body Text	Inter or Nunito	Clean, soft edges
+Accent / Game Elements	Fredoka	Fun, bubbly option for scoreboards, buttons, etc.
+📐 UI Guidelines
+Buttons:
+Rounded corners (border-radius: 12px)
+
+Soft shadows (box-shadow: 0 2px 5px rgba(0,0,0,0.1))
+
+Hover states with a subtle lift or glow effect
+
+Cards:
+Use layered backgrounds with light gradients or soft patterns (subtle waves, dots)
+
+Shadow and soft border to separate from background
+
+Game Elements:
+Icons: playful and vector-based (e.g. feather icons, heroicons)
+
+Progress bars: animated pastel fills
+
+Interaction types (drag & drop, sliders): use gradient tracks and soft color-coded feedback
+
+🪄 Micro-Interactions
+Correct answer: Small burst animation or glowing halo
+
+Wrong answer: Gentle shake and encouragement text
+
+Level up: Confetti pop or badge unlock with fanfare sound
+
+🧢 Logo Usage
+Keep logo colors white or deep navy on colored backgrounds
+
+Logo should always have padding (min 16px) around it
+
+Can be paired with tagline: "Play, Learn, Grow." (or we can come up with a tagline if you want)

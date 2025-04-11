@@ -1,0 +1,954 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Docs for clerk authentication
+## auth()
+The auth() helper returns the Auth object of the currently active user, as well as the redirectToSignIn() method.
+
+Only available for App Router.
+Only works on the server-side, such as in Server Components, Route Handlers, and Server Actions.
+Requires clerkMiddleware() to be configured.
+auth.protect()
+auth includes a single property, the protect() method, which you can use in two ways:
+
+to check if a user is authenticated (signed in)
+to check if a user is authorized (has the correct roles or permissions) to access something, such as a component or a route handler
+The following table describes how auth.protect() behaves based on user authentication or authorization status:
+
+Authenticated	Authorized	auth.protect() will
+Yes	Yes	Return the Auth object.
+Yes	No	Return a 404 error.
+No	No	Redirect the user to the sign-in page*.
+Important
+
+For non-document requests, such as API requests, auth.protect() returns a 404 error to users who aren't authenticated.
+
+auth.protect() accepts the following parameters:
+
+role?
+string
+The role to check for.
+
+permission?
+string
+The permission to check for.
+
+has?
+(isAuthorizedParams: CheckAuthorizationParamsWithCustomPermissions) => boolean
+A function that checks if the user has an organization role or custom permission. See the reference for more information.
+
+unauthorizedUrl?
+string
+The URL to redirect the user to if they are not authorized.
+
+unauthenticatedUrl?
+string
+The URL to redirect the user to if they are not authenticated.
+
+Example
+auth.protect() can be used to check if a user is authenticated or authorized to access certain parts of your application or even entire routes. See detailed examples in the dedicated guide.
+
+redirectToSignIn()
+The auth() helper returns the redirectToSignIn() method, which you can use to redirect the user to the sign-in page.
+
+redirectToSignIn() accepts the following parameters:
+
+returnBackUrl?
+string | URL
+The URL to redirect the user back to after they sign in.
+
+Note
+
+auth() on the server-side can only access redirect URLs defined via environment variables or clerkMiddleware dynamic keys.
+
+Example
+The following example shows how to use redirectToSignIn() to redirect the user to the sign-in page if they are not authenticated. It's also common to use redirectToSignIn() in clerkMiddleware() to protect entire routes; see the clerkMiddleware() docs for more information.
+
+app/page.tsx
+
+import { auth } from '@clerk/nextjs/server'
+
+export default async function Page() {
+  const { userId, redirectToSignIn } = await auth()
+
+  if (!userId) return redirectToSignIn()
+
+  return <h1>Hello, {userId}</h1>
+}
+auth() usage
+Protect pages and routes
+You can use auth() to check if a userId exists. If it's null, then there is not an authenticated (signed in) user. See detailed examples in the dedicated guide.
+
+Check roles and permissions
+You can use auth() to check if a user is authorized to access certain parts of your application or even entire routes by checking their roles or permissions. See detailed examples in the dedicated guide.
+
+Data fetching with getToken()
+If you need to send a JWT along to a server, getToken() retrieves the current user's session token or a custom JWT template. See detailed examples in the Auth reference.
+
+## currentUser()
+The currentUser helper returns the Backend User object of the currently active user. It can be used in Server Components, Route Handlers, and Server Actions.
+
+Under the hood, this helper:
+
+calls fetch(), so it is automatically deduped per request.
+uses the GET /v1/users/{user_id} endpoint.
+counts towards the Backend API request rate limit.
+app/page.tsx
+
+import { currentUser } from '@clerk/nextjs/server'
+
+export default async function Page() {
+  const user = await currentUser()
+
+  if (!user) return <div>Not signed in</div>
+
+  return <div>Hello {user?.firstName}</div>
+}
+
+## The Backend User object
+The Backend User object is similar to the User object as it holds information about a user of your application, such as their unique identifier, name, email addresses, phone numbers, and more. However, the Backend User object is different from the User object in that it is used in the Backend API and is not directly accessible from the Frontend API.
+
+Properties
+id
+string
+The unique identifier for the user.
+
+passwordEnabled
+boolean
+A boolean indicating whether the user has a password on their account.
+
+totpEnabled
+boolean
+A boolean indicating whether the user has enabled TOTP by generating a TOTP secret and verifying it via an authenticator app
+
+backupCodeEnabled
+boolean
+A boolean indicating whether the user has enabled Backup codes.
+
+twoFactorEnabled
+boolean
+A boolean indicating whether the user has enabled two-factor authentication.
+
+banned
+boolean
+A boolean indicating whether the user is banned or not.
+
+createdAt
+number
+The date when the user was first created.
+
+updatedAt
+number
+The date when the user was last updated.
+
+imageUrl
+string
+The URL of the user's profile image.
+
+hasImage
+boolean
+A getter boolean to check if the user has uploaded an image or one was copied from OAuth. Returns false if Clerk is displaying an avatar for the user.
+
+primaryEmailAddressId
+string
+The ID for the EmailAddress that the user has set as primary.
+
+primaryPhoneNumberId
+string
+The ID for the PhoneNumber that the user has set as primary.
+
+primaryWeb3WalletId
+string
+The ID for the Web3Wallet that the user signed up with.
+
+lastSignInAt
+number
+The date when the user last signed in. May be empty if the user has never signed in.
+
+externalId
+string
+The ID of the user as used in your external systems. Must be unique across your instance.
+
+username
+string
+The user's username.
+
+firstName
+string
+The user's first name.
+
+lastName
+string
+The user's last name.
+
+publicMetadata
+UserPublicMetadata
+Metadata that can be read from the Frontend API and Backend API and can be set only from the Backend API.
+
+privateMetadata
+UserPrivateMetadata
+Metadata that can be read and set only from the Backend API.
+
+unsafeMetadata
+UserUnsafeMetadata
+Metadata that can be read and set from the Frontend API. It's considered unsafe because it can be modified from the frontend.
+
+emailAddresses
+EmailAddress[]
+An array of all the EmailAddress objects associated with the user. Includes the primary.
+
+phoneNumbers
+PhoneNumber[]
+An array of all the PhoneNumber objects associated with the user. Includes the primary.
+
+hasVerifiedPhoneNumber
+boolean
+A getter boolean to check if the user has verified a phone number.
+
+web3Wallets
+Web3Wallet[]
+An array of all the Web3Wallet objects associated with the user. Includes the primary.
+
+externalAccounts
+ExternalAccount[]
+An array of all the ExternalAccount objects associated with the user via OAuth. Note: This includes both verified & unverified external accounts.
+
+lastActiveAt
+number
+Date when the user was last active.
+
+createOrganizationEnabled
+boolean
+A boolean indicating whether the organization creation is enabled for the user or not.
+
+createOrganizationsLimit?
+number
+An integer indicating the number of organizations that can be created by the user. If the value is 0, then the user can create unlimited organizations. Default is null.
+
+legalAcceptedAt?
+number | null
+The unix timestamp of when the user accepted the legal requirements. null if Require express consent to legal documents is not enabled.
+
+## Server Actions
+Clerk provides helpers to allow you to protect your Server Actions, fetch the current user, and interact with the Clerk API.
+
+The following guide provides examples for using Server Actions in Server Components and in Client Components.
+
+With Server Components
+Protect your Server Actions
+You can use the auth() helper to protect your server actions. This helper will return the current user's ID if they are signed in, or null if they are not.
+
+actions.ts
+
+import { auth } from '@clerk/nextjs/server'
+
+export default function AddToCart() {
+  async function addItem(formData: FormData) {
+    'use server'
+
+    const { userId } = await auth()
+
+    if (!userId) {
+      throw new Error('You must be signed in to add an item to your cart')
+    }
+
+    console.log('add item server action', formData)
+  }
+
+  return (
+    <form action={addItem}>
+      <input value={'test'} type="text" name="name" />
+      <button type="submit">Add to Cart</button>
+    </form>
+  )
+}
+Accessing the current user
+Current user data is important for data enrichment. You can use the currentUser() helper to fetch the current user's data in your server actions.
+
+app/page.tsx
+
+import { currentUser } from '@clerk/nextjs/server'
+
+export default function AddHobby() {
+  async function addHobby(formData: FormData) {
+    'use server'
+
+    const user = await currentUser()
+
+    if (!user) {
+      throw new Error('You must be signed in to use this feature')
+    }
+
+    const serverData = {
+      usersHobby: formData.get('hobby'),
+      userId: user.id,
+      profileImage: user.imageUrl,
+    }
+
+    console.log('add item server action completed with user details ', serverData)
+  }
+
+  return (
+    <form action={addHobby}>
+      <input value={'soccer'} type="text" name="hobby" />
+      <button type="submit">Submit your hobby</button>
+    </form>
+  )
+}
+With Client Components
+When using Server Actions in Client Components, you need to make sure you use prop drilling to ensure that headers are available.
+
+Protect your Server Actions
+Use the following tabs to see an example of how to protect a Server Action that is used in a Client Component.
+
+Server Action
+Client Component
+Page
+app/actions.ts
+
+'use server'
+import { auth } from '@clerk/nextjs/server'
+
+export async function addItem(formData: FormData) {
+  const { userId } = await auth()
+
+  if (!userId) {
+    throw new Error('You must be signed in to add an item to your cart')
+  }
+
+  console.log('add item server action', formData)
+}
+Accessing the current user
+Use the following tabs to see an example of how to access the current user in a Server Action that is used in a Client Component.
+
+Server Action
+Client Component
+Page
+app/actions.ts
+
+'use server'
+import { currentUser } from '@clerk/nextjs/server'
+
+export async function addHobby(formData: FormData) {
+  const user = await currentUser()
+
+  if (!user) {
+    throw new Error('You must be signed in to use this feature')
+  }
+
+  const serverData = {
+    usersHobby: formData.get('hobby'),
+    userId: user.id,
+    profileImage: user.imageUrl,
+  }
+
+  console.log('add Hobby completed with user details ', serverData)
+}
+
+## Read session and user data in your Next.js app with Clerk
+Clerk provides a set of hooks and helpers that you can use to access the active session and user data in your Next.js application. Here are examples of how to use these helpers in both the client and server-side to get you started.
+
+Server-side
+App Router
+auth() and currentUser() are App Router-specific helpers that you can use inside of your Route Handlers, Middleware, Server Components, and Server Actions.
+
+The auth() helper will return the Auth object of the currently active user.
+The currentUser() helper will return the Backend User object of the currently active user. This is helpful if you want to render information, like their first and last name, directly from the server. Under the hood, currentUser() uses the clerkClient wrapper to make a call to the Backend API. This does count towards the Backend API request rate limit. This also uses fetch() so it is automatically deduped per request.
+The following example uses the auth() helper to validate an authenticated user and the currentUser() helper to access the Backend User object for the authenticated user.
+
+Note
+
+Any requests from a Client Component to a Route Handler will read the session from cookies and will not need the token sent as a Bearer token.
+
+Server components and actions
+Route Handler
+app/api/user/route.ts
+
+import { NextResponse } from 'next/server'
+import { currentUser, auth } from '@clerk/nextjs/server'
+
+export async function GET() {
+  // Use `auth()` to get the user's ID
+  const { userId } = await auth()
+
+  // Protect the route by checking if the user is signed in
+  if (!userId) {
+    return new NextResponse('Unauthorized', { status: 401 })
+  }
+
+  // Use `currentUser()` to get the Backend API User object
+  const user = await currentUser()
+
+  // Add your Route Handler's logic with the returned `user` object
+
+  return NextResponse.json({ user: user }, { status: 200 })
+}
+Pages Router
+For Next.js applications using the Pages Router, the getAuth() helper will return the Auth object of the currently active user, which contains important information like the current user's session ID, user ID, and organization ID. The userId can be used to protect your API routes.
+
+In some cases, you may need the full Backend User object of the currently active user. This is helpful if you want to render information, like their first and last name, directly from the server.
+
+The clerkClient() helper returns an instance of the JavaScript Backend SDK, which exposes Clerk's Backend API resources through methods such as the getUser() method. This method returns the full Backend User object.
+
+In the following example, the userId is passed to the Backend SDK's getUser() method to get the user's full Backend User object.
+
+API Route
+getServerSideProps
+pages/api/auth.ts
+
+import { getAuth, clerkClient } from '@clerk/nextjs/server'
+import type { NextApiRequest, NextApiResponse } from 'next'
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Use `getAuth()` to get the user's ID
+  const { userId } = getAuth(req)
+
+  // Protect the route by checking if the user is signed in
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+
+  // Initialize the Backend SDK
+  const client = await clerkClient()
+
+  // Get the user's full `Backend User` object
+  const user = await client.users.getUser(userId)
+
+  return res.status(200).json({ user })
+}
+Client-side
+useAuth()
+The following example uses the useAuth() hook to access the current auth state, as well as helper methods to manage the current active session. The hook returns userId, which can be used to protect your routes.
+
+example.tsx
+
+export default function Example() {
+  const { isLoaded, isSignedIn, userId, sessionId, getToken } = useAuth()
+
+  if (!isLoaded) {
+    return <div>Loading...</div>
+  }
+
+  if (!isSignedIn) {
+    // You could also add a redirect to the sign-in page here
+    return <div>Sign in to view this page</div>
+  }
+
+  return (
+    <div>
+      Hello, {userId}! Your current active session is {sessionId}.
+    </div>
+  )
+}
+useUser()
+The following example uses the useUser() hook to access the User object, which contains the current user's data such as their full name. The isLoaded and isSignedIn properties are used to handle the loading state and to check if the user is signed in, respectively.
+
+src/Example.tsx
+
+export default function Example() {
+  const { isSignedIn, user, isLoaded } = useUser()
+
+  if (!isLoaded) {
+    return <div>Loading...</div>
+  }
+
+  if (!isSignedIn) {
+    return <div>Sign in to view this page</div>
+  }
+
+  return <div>Hello {user.firstName}!</div>
+}
+
+## Add custom onboarding to your authentication flow
+Onboarding is a crucial part of many authentication flows. Sometimes you need to make sure certain criteria is met and collected before allowing access to parts of your application. With Clerk, you can leverage customizable session tokens, public metadata, and Middleware to create a custom onboarding experience.
+
+This guide demonstrates how to create a custom onboarding flow that requires users to complete a form before they can access the application. After a user authenticates using the Account Portal, the user is prompted to fill out a form with an application name and type. Once the user has completed the form, they are redirected to the application's homepage.
+
+In this guide, you will learn how to:
+
+Add custom claims to your session token
+Configure your Middleware to read session data
+Update the user’s onboarding state
+For the sake of this guide, examples are written for Next.js App Router, but can be used with Next.js Pager Router as well. The examples have been pared down to the bare minimum to enable you to easily customize them to your needs.
+
+Note
+
+To see this guide in action, see the repository.
+
+Add custom claims to your session token
+Session tokens are JWTs that are generated by Clerk on behalf of your instance, and contain claims that allow you to store data about a user's session. With Clerk, when a session token exists for a user, it indicates that the user is authenticated, and the associated claims can be retrieved at any time.
+
+For this guide, you will use an onboardingComplete property in the user's public metadata to track their onboarding status. But first, you need to add a custom claim to the session token that will allow you to access the user's public metadata in your Middleware.
+
+To edit the session token:
+
+In the Clerk Dashboard, navigate to the Sessions page.
+
+In the Customize session token section, select the Edit button.
+
+In the modal that opens, you can add any claim to your session token that you need. For this guide, add the following:
+
+
+{
+  "metadata": "{{user.public_metadata}}"
+}
+Select Save.
+
+To get auto-complete and prevent TypeScript errors when working with custom session claims, you can define a global type.
+
+In your application's root folder, add a types directory.
+Inside of the types directory, add a globals.d.ts file.
+Create the CustomJwtSessionClaims interface and declare it globally.
+Add the custom claims to the CustomJwtSessionClaims interface.
+For this guide, your globals.d.ts file should look like this:
+
+types/globals.d.ts
+
+export {}
+
+declare global {
+  interface CustomJwtSessionClaims {
+    metadata: {
+      onboardingComplete?: boolean
+    }
+  }
+}
+Configure your Middleware to read session data
+clerkMiddleware() allows you to configure access to your routes with fine grained control. It also allows you to retrieve claims directly from the session and redirect your user accordingly.
+
+The following example demonstrates how to use clerkMiddleware() to redirect users based on their onboarding status. If the user is signed in and has not completed onboarding, they will be redirected to the onboarding page.
+
+Note that the following example protects all routes except one. This is so that any user visiting your application is forced to authenticate, and then forced to onboard. You can customize the array in the createRouteMatcher() function assigned to isPublicRoute to include any routes that should be accessible to all users, even unauthenticated ones.
+
+src/middleware.ts
+
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { NextRequest, NextResponse } from 'next/server'
+
+const isOnboardingRoute = createRouteMatcher(['/onboarding'])
+const isPublicRoute = createRouteMatcher(['/public-route-example'])
+
+export default clerkMiddleware(async (auth, req: NextRequest) => {
+  const { userId, sessionClaims, redirectToSignIn } = await auth()
+
+  // For users visiting /onboarding, don't try to redirect
+  if (userId && isOnboardingRoute(req)) {
+    return NextResponse.next()
+  }
+
+  // If the user isn't signed in and the route is private, redirect to sign-in
+  if (!userId && !isPublicRoute(req)) return redirectToSignIn({ returnBackUrl: req.url })
+
+  // Catch users who do not have `onboardingComplete: true` in their publicMetadata
+  // Redirect them to the /onboarding route to complete onboarding
+  if (userId && !sessionClaims?.metadata?.onboardingComplete) {
+    const onboardingUrl = new URL('/onboarding', req.url)
+    return NextResponse.redirect(onboardingUrl)
+  }
+
+  // If the user is logged in and the route is protected, let them view.
+  if (userId && !isPublicRoute(req)) return NextResponse.next()
+})
+
+export const config = {
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+  ],
+}
+Create a layout for the /onboarding route
+You will need a layout for the /onboarding route that will redirect users to the homepage if they have already completed onboarding.
+
+In your /app directory, create an /onboarding folder.
+In your /onboarding directory, create a layout.tsx file and add the following code to the file. This file could also be expanded to handle multiple steps, if multiple steps are required for an onboarding flow.
+src/app/onboarding/layout.tsx
+
+import { auth } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  if ((await auth()).sessionClaims?.metadata.onboardingComplete === true) {
+    redirect('/')
+  }
+
+  return <>{children}</>
+}
+Add fallback and force redirect URLs
+To ensure a smooth onboarding flow, add redirect URL's to your environment variables. The fallback redirect URL is used when there is no redirect_url in the path. The force redirect URL will always be used after a successful sign up.
+
+.env
+
+NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/dashboard
+NEXT_PUBLIC_CLERK_SIGN_UP_FORCE_REDIRECT_URL=/onboarding
+Use publicMetadata to track user onboarding state
+Each Clerk user has a User object that contains a publicMetadata property, which can be used to store custom data about the user. This information can be accessed on the client-side and can be used to drive application state. For more information, see the guide on metadata.
+
+You can use the user's publicMetadata to track the user's onboarding state. To do this, you will create:
+
+A process in your frontend with logic to collect and submit all the information for onboarding. In this guide, you will create a simple form.
+A method in your backend to securely update the user's publicMetadata
+Collect user onboarding information
+To collect the user's onboarding information, create a form that will be displayed on the /onboarding page. This form will collect the user's application name and application type. This is a very loose example — you can use this step to capture information from the user, sync user data to your database, have the user sign up to a course or subscription, or more.
+
+In your /onboarding directory, create a page.tsx file.
+Add the following code to the file.
+
+'use client'
+
+import * as React from 'react'
+import { useUser } from '@clerk/nextjs'
+import { useRouter } from 'next/navigation'
+import { completeOnboarding } from './_actions'
+
+export default function OnboardingComponent() {
+  const [error, setError] = React.useState('')
+  const { user } = useUser()
+  const router = useRouter()
+
+  const handleSubmit = async (formData: FormData) => {
+    const res = await completeOnboarding(formData)
+    if (res?.message) {
+      // Reloads the user's data from the Clerk API
+      await user?.reload()
+      router.push('/')
+    }
+    if (res?.error) {
+      setError(res?.error)
+    }
+  }
+  return (
+    <div>
+      <h1>Welcome</h1>
+      <form action={handleSubmit}>
+        <div>
+          <label>Application Name</label>
+          <p>Enter the name of your application.</p>
+          <input type="text" name="applicationName" required />
+        </div>
+
+        <div>
+          <label>Application Type</label>
+          <p>Describe the type of your application.</p>
+          <input type="text" name="applicationType" required />
+        </div>
+        {error && <p className="text-red-600">Error: {error}</p>}
+        <button type="submit">Submit</button>
+      </form>
+    </div>
+  )
+}
+Update the user's publicMetadata in your backend
+Now that there is a form to collect the user's onboarding information, you need to create a method in your backend to update the user's publicMetadata with this information. This method will be called when the user submits the form.
+
+In your /onboarding directory, create an _actions.ts file.
+Add the following code to the file. This file includes a method that will be called on form submission and will update the user's publicMetadata accordingly. The following example uses the clerkClient wrapper to interact with the Backend API and update the user's publicMetadata.
+
+'use server'
+
+import { auth, clerkClient } from '@clerk/nextjs/server'
+
+export const completeOnboarding = async (formData: FormData) => {
+  const { userId } = await auth()
+
+  if (!userId) {
+    return { message: 'No Logged In User' }
+  }
+
+  const client = await clerkClient()
+
+  try {
+    const res = await client.users.updateUser(userId, {
+      publicMetadata: {
+        onboardingComplete: true,
+        applicationName: formData.get('applicationName'),
+        applicationType: formData.get('applicationType'),
+      },
+    })
+    return { message: res.publicMetadata }
+  } catch (err) {
+    return { error: 'There was an error updating the user metadata.' }
+  }
+}
+Wrap up
+Your onboarding flow is now complete! 🎉 Users who have not onboarded yet will now land on your /onboarding page. New users signing up or signing in to your application will have to complete the onboarding process before they can access your application. By using Clerk, you have streamlined the user authentication and onboarding process, ensuring a smooth and efficient experience for your new users.
+
+Feedback
+
+## <SignIn /> component
+The <SignIn /> component renders a UI for signing in users.
+The <SignIn /> component renders a UI to allow users to sign in or sign up by default. The functionality of the <SignIn /> component is controlled by the instance settings you specify in the Clerk Dashboard, such as sign-in and sign-up options and social connections. You can further customize your <SignIn /> component by passing additional properties at the time of rendering.
+
+Note
+
+The <SignUp/> and <SignIn/> components cannot render when a user is already signed in, unless the application allows multiple sessions. If a user is already signed in and the application only allows a single session, Clerk will redirect the user to the Home URL instead.
+
+Properties
+All props are optional.
+
+appearance
+Appearance | undefined
+Optional object to style your components. Will only affect Clerk components and not Account Portal pages.
+
+fallback
+ReactNode
+An optional element to be rendered while the component is mounting.
+
+fallbackRedirectUrl
+string
+The fallback URL to redirect to after the user signs in, if there's no redirect_url in the path already. Defaults to /. It's recommended to use the environment variable instead.
+
+forceRedirectUrl
+string
+If provided, this URL will always be redirected to after the user signs in. It's recommended to use the environment variable instead.
+
+initialValues
+SignInInitialValues
+The values used to prefill the sign-in fields with.
+
+path
+string
+The path where the component is mounted on when routing is set to path. It is ignored in hash-based routing. For example: /sign-in.
+
+routing
+'hash' | 'path'
+The routing strategy for your pages. Defaults to 'path' for frameworks that handle routing, such as Next.js and Remix. Defaults to hash for all other SDK's, such as React.
+
+signUpFallbackRedirectUrl
+string
+The fallback URL to redirect to after the user signs up, if there's no redirect_url in the path already. Used for the 'Don't have an account? Sign up' link that's rendered. Defaults to /. It's recommended to use the environment variable instead.
+
+signUpForceRedirectUrl
+string
+If provided, this URL will always used as the redirect destination after the user signs up. Used for the 'Don't have an account? Sign up' link that's rendered. It's recommended to use the environment variable instead.
+
+signUpUrl
+string
+The full URL or path to the sign-up page. Used for the 'Don't have an account? Sign up' link that's rendered. It's recommended to use the environment variable instead.
+
+transferable
+boolean
+Indicates whether or not sign in attempts are transferable to the sign up flow. Defaults to true. When set to false, prevents opaque sign ups when a user attempts to sign in via OAuth with an email that doesn't exist. See OAuth account transfer flows for more information.
+
+waitlistUrl
+string
+Full URL or path to the waitlist page. Use this property to provide the target of the 'Waitlist' link that's rendered. If undefined, will redirect to the Account Portal waitlist page. If you've passed the waitlistUrl prop to the <ClerkProvider> component, it will infer from that, and you can omit this prop.
+
+withSignUp
+boolean
+Opt into sign-in-or-up flow by setting this prop to true. When true, if a user does not exist, they will be prompted to sign up. If a user exists, they will be prompted to sign in. Defaults to true if the CLERK_SIGN_UP_URL environment variable is set. Otherwise, defaults to false.
+
+Usage with frameworks
+The following example includes basic implementation of the <SignIn /> component. You can use this as a starting point for your own implementation.
+
+Next.js
+Astro
+Expo
+React
+React Router
+Remix
+Tanstack Start
+Vue
+The following example demonstrates how you can use the <SignIn /> component on a public page.
+
+If you would like to create a dedicated /sign-in page in your Next.js application, there are a few requirements you must follow. See the dedicated guide for more information.
+
+app/page.tsx
+
+import { SignIn, useUser } from '@clerk/nextjs'
+
+export default function Home() {
+  const { user } = useUser()
+
+  if (!user) return <SignIn />
+
+  return <div>Welcome!</div>
+}
+Customization
+To learn about how to customize Clerk components, see the customization documentation.
+
+If Clerk's prebuilt components don't meet your specific needs or if you require more control over the logic, you can rebuild the existing Clerk flows using the Clerk API. For more information, see the custom flow guides.
+
+## <SignUp /> component
+The <SignUp /> component renders a UI for signing up users.
+The <SignUp /> component renders a UI for signing up users. The functionality of the <SignUp /> component is controlled by the instance settings you specify in the Clerk Dashboard, such as sign-in and sign-up options and social connections. You can further customize your <SignUp /> component by passing additional properties at the time of rendering.
+
+Note
+
+The <SignUp/> and <SignIn/> components cannot render when a user is already signed in, unless the application allows multiple sessions. If a user is already signed in and the application only allows a single session, Clerk will redirect the user to the Home URL instead.
+
+Properties
+All props are optional.
+
+appearance
+Appearance | undefined
+Optional object to style your components. Will only affect Clerk components and not Account Portal pages.
+
+fallback
+ReactNode
+An optional element to be rendered while the component is mounting.
+
+fallbackRedirectUrl
+string
+The fallback URL to redirect to after the user signs up, if there's no redirect_url in the path already. Defaults to /. It's recommended to use the environment variable instead.
+
+forceRedirectUrl
+string
+If provided, this URL will always be used as the redirect destination after the user signs up. It's recommended to use the environment variable instead.
+
+initialValues
+SignUpInitialValues
+The values used to prefill the sign-up fields with.
+
+path
+string
+The path where the component is mounted on when routing is set to path. It is ignored in hash-based routing. For example: /sign-up.
+
+routing
+'hash' | 'path'
+The routing strategy for your pages. Defaults to 'path' for frameworks that handle routing, such as Next.js and Remix. Defaults to hash for all other SDK's, such as React.
+
+signInFallbackRedirectUrl
+string
+The fallback URL to redirect to after the user signs in, if there's no redirect_url in the path already. Used for the 'Already have an account? Sign in' link that's rendered. Defaults to /. It's recommended to use the environment variable instead.
+
+signInForceRedirectUrl?
+string
+If provided, this URL will always be redirected to after the user signs in. Used for the 'Already have an account? Sign in' link that's rendered. It's recommended to use the environment variable instead.
+
+signInUrl
+string
+The full URL or path to the sign-in page. Used for the 'Already have an account? Sign in' link that's rendered. It's recommended to use the environment variable instead.
+
+unsafeMetadata
+SignUpUnsafeMetadata
+Metadata that can be read and set from the frontend and the backend. Once the sign-up is complete, the value of this field will be automatically copied to the created user's unsafe metadata (User.unsafeMetadata). One common use case is to collect custom information about the user during the sign-up process and store it in this property. Read more about unsafe metadata.
+
+Usage with frameworks
+The following example includes basic implementation of the <SignUp /> component. You can use this as a starting point for your own implementation.
+
+Next.js
+Astro
+React
+React Router
+Remix
+Tanstack Start
+Vue
+The following example demonstrates how you can use the <SignUp /> component on a public page.
+
+If you would like to create a dedicated /sign-up page in your Next.js application, there are a few requirements you must follow. See the dedicated guide for more information.
+
+app/page.tsx
+
+import { SignUp, useUser } from '@clerk/nextjs'
+
+export default function Home() {
+  const { user } = useUser()
+
+  if (!user) return <SignUp />
+
+  return <div>Welcome!</div>
+}
+Customization
+To learn about how to customize Clerk components, see the customization documentation.
+
+If Clerk's prebuilt components don't meet your specific needs or if you require more control over the logic, you can rebuild the existing Clerk flows using the Clerk API. For more information, see the custom flow guides.
+
+## <UserButton /> component
+The <UserButton /> component renders the familiar user button UI popularized by Google.
+The <UserButton /> component renders the familiar user button UI popularized by Google. When selected, it opens a dropdown menu with options to manage account settings and sign out. The "Manage account" option launches the <UserProfile /> component, providing access to profile and security settings.
+
+For users that have multi-session enabled, the <UserButton /> also allows users to sign into multiple accounts at once and instantly switch between them without the need for a full page reload. Learn more here.
+
+Properties
+The <UserButton /> component accepts the following properties, all of which are optional:
+
+afterMultiSessionSingleSignOutUrl (deprecated)
+string
+Deprecated. Move afterMultiSessionSingleSignOutUrl to <ClerkProvider />. The full URL or path to navigate to after signing out from a currently active account in a multi-session app.
+
+afterSignOutUrl (deprecated)
+string
+Deprecated. Move afterSignOutUrl to <ClerkProvider />. The full URL or path to navigate to after a successful sign-out.
+
+afterSwitchSessionUrl
+string
+The full URL or path to navigate to after a successful account change in a multi-session app.
+
+appearance
+Appearance | undefined
+Optional object to style your components. Will only affect Clerk components and not Account Portal pages.
+
+defaultOpen
+boolean
+Controls whether the <UserButton /> should open by default during the first render.
+
+showName
+boolean
+Controls if the user name is displayed next to the user image button.
+
+signInUrl
+string
+The full URL or path to navigate to when the Add another account button is clicked. It's recommended to use the environment variable instead.
+
+userProfileMode
+'modal' | 'navigation'
+Controls whether selecting the Manage your account button will cause the <UserProfile /> component to open as a modal, or if the browser will navigate to the userProfileUrl where <UserProfile /> is mounted as a page. Defaults to: 'modal'.
+
+userProfileProps
+object
+Specify options for the underlying <UserProfile /> component. For example: {additionalOAuthScopes: {google: ['foo', 'bar'], github: ['qux']}}.
+
+userProfileUrl
+string
+The full URL or path leading to the user management interface.
+
+fallback?
+ReactNode
+An optional element to be rendered while the component is mounting.
+
+Usage with frameworks
+In the following example, <UserButton /> is mounted inside a header component, which is a common pattern on many websites and applications. When the user is signed in, they will see their avatar and be able to open the popup menu.
+
+Next.js
+React
+Astro
+Remix
+Tanstack Start
+Vue
+App Router
+Pages Router
+layout.tsx
+
+import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/nextjs'
+
+function Header() {
+  return (
+    <header style={{ display: 'flex', justifyContent: 'space-between', padding: 20 }}>
+      <h1>My App</h1>
+      <SignedIn>
+        <UserButton />
+      </SignedIn>
+      <SignedOut>
+        <SignInButton />
+      </SignedOut>
+    </header>
+  )
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <ClerkProvider>
+        <Header />
+        {children}
+      </ClerkProvider>
+    </html>
+  )
+}
+
+
+
