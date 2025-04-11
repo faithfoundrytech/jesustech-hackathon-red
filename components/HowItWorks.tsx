@@ -8,7 +8,7 @@ export default function HowItWorks() {
   const steps = [
     {
       title: "Pastor Uploads Sermon",
-      description: "Upload text, video, or audio sermom content with auto-transcription",
+      description: "Upload text, video, or audio sermon content with auto-transcription",
     },
     {
       title: "AI Creates Games",
@@ -24,8 +24,16 @@ export default function HowItWorks() {
     },
   ];
 
+  const quizQuestion = "In Jesus' Parable of the Sower, what do the seeds represent?";
+  const quizOptions = [
+    { text: "God's Blessings", color: "bg-purple-800/80" },
+    { text: "The Word of God", color: "bg-purple-700/80" },
+    { text: "Faith and Prayer", color: "bg-purple-600/80" },
+    { text: "Different Churches", color: "bg-purple-500/80" },
+  ];
+
   return (
-    <section className="py-16 px-4 md:px-8 bg-baby-blue/20 dark:bg-soft-indigo/20">
+    <section className="py-16 px-4 md:px-8 bg-grey text-purple-100">
       <div className="max-w-6xl mx-auto">
         <motion.div
           initial={{ y: 20, opacity: 0 }}
@@ -33,16 +41,15 @@ export default function HowItWorks() {
           viewport={{ once: true }}
           className="text-center mb-12"
         >
-          <h2 className="text-2xl md:text-3xl font-poppins font-bold text-deep-navy dark:text-light-lavender mb-4">
+          <h2 className="text-2xl md:text-3xl font-poppins font-bold text-purple-100 mb-4">
             How Play The Word Works
           </h2>
-          <p className="text-deep-navy/80 dark:text-light-lavender/80 max-w-2xl mx-auto">
+          <p className="text-purple-300 max-w-2xl mx-auto">
             A simple process that creates powerful learning experiences
           </p>
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-          {/* Steps Column */}
           <div className="space-y-6">
             {steps.map((step, index) => (
               <motion.div
@@ -53,14 +60,14 @@ export default function HowItWorks() {
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 className="flex items-start gap-4"
               >
-                <div className="bg-soft-purple dark:bg-coral-pink text-white w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                <div className="bg-purple-700 text-white w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
                   {index + 1}
                 </div>
                 <div>
-                  <h3 className="font-poppins font-semibold text-deep-navy dark:text-light-lavender text-lg mb-1">
+                  <h3 className="font-poppins font-semibold text-purple-100 text-lg mb-1">
                     {step.title}
                   </h3>
-                  <p className="text-deep-navy/70 dark:text-light-lavender/70 text-sm">
+                  <p className="text-purple-300 text-sm">
                     {step.description}
                   </p>
                 </div>
@@ -74,128 +81,114 @@ export default function HowItWorks() {
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
               transition={{ delay: 0.6 }}
-              className="mt-4 bg-soft-purple text-white px-6 py-3 rounded-full font-semibold shadow-md hover:shadow-lg transition-shadow inline-flex items-center gap-2"
+              className="mt-4 bg-purple-950 text-white px-6 py-3 rounded-full font-semibold shadow-md hover:shadow-lg transition-shadow inline-flex items-center gap-2"
             >
               Try It Now <ChevronRight size={16} />
             </motion.button>
           </div>
           
-          {/* Mockup/Device Column */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="bg-cream-white dark:bg-soft-indigo/60 rounded-3xl p-4 shadow-lg mx-auto max-w-xs md:max-w-sm"
+            className="bg-purple-900 rounded-3xl p-4 shadow-lg mx-auto max-w-xs md:max-w-sm"
           >
-            {/* Phone mockup with actual screenshot placeholder */}
-            <div className="aspect-[9/16] rounded-2xl overflow-hidden relative">
-              <Image
-                src="https://placehold.co/750x1334/A88BFE/FFFFFF?text=Mobile+App+Screen"
-                alt="Mobile App Interface"
-                width={750}
-                height={1334}
-                className="w-full h-full object-cover"
-              />
-              
-              {/* Overlay game elements */}
-              <div className="absolute inset-0">
-                <div className="absolute top-8 left-0 right-0 flex justify-center">
-                  <Image
-                    src="https://placehold.co/350x60/FFFFFF/2F2F5D?text=Quiz+Title"
-                    alt="Quiz Header"
-                    width={350} 
-                    height={60}
-                    className="rounded-full"
-                  />
+            <div className="aspect-[9/16] rounded-2xl overflow-hidden relative bg-black p-4">
+              <div className="absolute inset-0 flex flex-col p-6">
+                <div className="bg-purple-700 rounded-t-xl rounded-b-md p-4 text-center shadow-md">
+                  <h3 className="text-xl font-bold text-white">Sunday Sermon Quiz</h3>
+                  <p className="text-purple-300 text-sm">Parable of the Sower</p>
                 </div>
                 
-                <div className="absolute top-28 left-0 right-0 flex justify-center">
-                  <div className="grid grid-cols-2 gap-3 w-[80%]">
-                    {[
-                      "https://placehold.co/160x120/FFD6A5/2F2F5D?text=Option+1",
-                      "https://placehold.co/160x120/B8E4F0/2F2F5D?text=Option+2",
-                      "https://placehold.co/160x120/C5FAD5/2F2F5D?text=Option+3",
-                      "https://placehold.co/160x120/F9F871/2F2F5D?text=Option+4"
-                    ].map((src, i) => (
-                      <motion.div 
-                        key={i}
-                        animate={{ opacity: [0.8, 1, 0.8] }}
-                        transition={{ 
-                          duration: 2, 
-                          repeat: Infinity, 
-                          delay: i * 0.5,
-                          ease: "easeInOut" 
-                        }}
-                      >
-                        <Image
-                          src={src}
-                          alt={`Game option ${i+1}`}
-                          width={160}
-                          height={120}
-                          className="rounded-xl"
-                        />
-                      </motion.div>
-                    ))}
+                <div className="mt-6 mb-4">
+                  <div className="flex justify-between text-xs text-purple-300 mb-1">
+                    <span>Question 2 of 5</span>
+                    <span>300 points</span>
+                  </div>
+                  <div className="w-full bg-purple-800 h-2 rounded-full">
+                    <div className="bg-purple-500 h-2 rounded-full w-2/5"></div>
                   </div>
                 </div>
                 
+                <div className="mb-6 text-center">
+                  <h4 className="text-lg text-white font-medium">{quizQuestion}</h4>
+                </div>
+                
+                <div className="grid grid-cols-1 gap-4 mb-6">
+                  {quizOptions.map((option, i) => (
+                    <motion.div 
+                      key={i}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.98 }}
+                      animate={{ opacity: [0.9, 1, 0.9] }}
+                      transition={{ 
+                        duration: 2, 
+                        repeat: Infinity, 
+                        delay: i * 0.3,
+                        ease: "easeInOut" 
+                      }}
+                      className={`${option.color} p-4 rounded-xl text-black font-medium text-center cursor-pointer shadow-md`}
+                    >
+                      {option.text}
+                    </motion.div>
+                  ))}
+                </div>
+                
+                <div className="text-center text-purple-300 text-xs italic mb-4">
+                  "But the seed falling on good soil refers to someone who hears the word and understands it..." - Matthew 13:23
+                </div>
+                
                 <motion.div 
-                  className="absolute bottom-16 left-0 right-0 flex justify-center"
+                  className="mt-auto flex justify-center"
                   animate={{ y: [0, 5, 0] }}
                   transition={{ duration: 2, repeat: Infinity }}
                 >
-                  <Image
-                    src="https://placehold.co/200x50/FFFFFF/A88BFE?text=Submit+Answer"
-                    alt="Submit button"
-                    width={200}
-                    height={50}
-                    className="rounded-full"
-                  />
+                  <button className="bg-purple-600 text-white py-3 px-8 rounded-full font-semibold shadow-md">
+                    Submit Answer
+                  </button>
                 </motion.div>
               </div>
             </div>
           </motion.div>
         </div>
 
-        {/* Additional workflow visual */}
         <motion.div
-          initial={{ y: 30, opacity: 0 }}
-          whileInView={{ y: 0, opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.4 }}
-          className="mt-20"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {[
-              "https://placehold.co/300x200/A88BFE/FFFFFF?text=Pastor+Dashboard",
-              "https://placehold.co/300x200/FFD6A5/2F2F5D?text=Content+Analysis",
-              "https://placehold.co/300x200/B8E4F0/2F2F5D?text=Game+Creation",
-              "https://placehold.co/300x200/C5FAD5/2F2F5D?text=User+Engagement"
-            ].map((src, i) => (
-              <motion.div
-                key={i}
-                initial={{ y: 20, opacity: 0 }}
-                whileInView={{ y: 0, opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.1 * i }}
-                className="relative"
-              >
-                <Image
-                  src={src}
-                  alt={`Workflow step ${i+1}`}
-                  width={300}
-                  height={200}
-                  className="w-full h-auto rounded-xl shadow-md"
-                />
-                <div className="absolute -top-2 -right-2 w-8 h-8 bg-soft-purple dark:bg-coral-pink text-white rounded-full flex items-center justify-center text-sm font-bold">
-                  {i+1}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
+  initial={{ y: 30, opacity: 0 }}
+  whileInView={{ y: 0, opacity: 1 }}
+  viewport={{ once: true }}
+  transition={{ delay: 0.4 }}
+  className="mt-20"
+>
+  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+    {[
+      { text: "Pastor Dashboard", color: "bg-gray-800" },
+      { text: "Content Analysis", color: "bg-gray-800" },
+      { text: "Game Creation", color: "bg-gray-800" },
+      { text: "User Engagement", color: "bg-gray-800" }
+    ].map((step, i) => (
+      <motion.div
+        key={i}
+        initial={{ y: 20, opacity: 0 }}
+        whileInView={{ y: 0, opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.1 * i }}
+        className="relative"
+      >
+        <div className={`${step.color} w-full h-48 rounded-xl shadow-md flex items-center justify-center`}>
+          <p className="text-white font-bold text-lg">{step.text}</p>
+        </div>
+        <div className="absolute -top-2 -right-2 w-8 h-8 bg-gray-00 text-white rounded-full flex items-center justify-center text-sm font-bold">
+          {i + 1}
+        </div>
+      </motion.div>
+    ))}
+  </div>
+</motion.div>
+
+
+
       </div>
     </section>
   );
-} 
+}

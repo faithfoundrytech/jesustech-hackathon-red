@@ -5,38 +5,50 @@ import { motion } from "framer-motion";
 import { Sun, Moon } from "lucide-react";
 
 export default function ThemeSwitcher() {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  // Initialize to user preference or system preference, defaulting to 'light'
+  const [theme, setTheme] = useState("light");
 
+  // On first mount, get the current theme
   useEffect(() => {
-    // Check initial theme preference
-    const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    setIsDarkMode(isDark);
-
-    // Apply theme to document
-    document.documentElement.classList.toggle("dark", isDark);
+    // Check local storage first
+    const savedTheme = localStorage.getItem("theme");
+    
+    // If theme was saved in localStorage, use that
+    if (savedTheme) {
+      setTheme(savedTheme);
+      document.documentElement.classList.toggle("dark", savedTheme === "dark");
+    } 
+    // Otherwise check system preference
+    else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setTheme("dark");
+      document.documentElement.classList.add("dark");
+    }
   }, []);
 
   const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    
+    // Update the HTML class for Tailwind dark mode
     document.documentElement.classList.toggle("dark");
+    
+    // Save preference to localStorage
+    localStorage.setItem("theme", newTheme);
   };
 
   return (
     <motion.button
-      whileTap={{ scale: 0.95 }}
-      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.9 }}
+      whileHover={{ scale: 1.1 }}
       onClick={toggleTheme}
-      className="bg-baby-blue dark:bg-soft-indigo p-2 rounded-full text-deep-navy dark:text-light-lavender"
-      aria-label="Toggle theme"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
+      className="p-2 rounded-full bg-baby-blue/30 dark:bg-soft-indigo/30 text-deep-navy dark:text-light-lavender"
+      aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
     >
-      {isDarkMode ? (
-        <Sun size={20} className="text-light-lavender" />
+      {theme === "light" ? (
+        <Moon size={18} className="text-deep-navy" />
       ) : (
-        <Moon size={20} className="text-deep-navy" />
+        <Sun size={18} className="text-light-lavender" />
       )}
     </motion.button>
   );
-} 
+}
