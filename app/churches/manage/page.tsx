@@ -1,9 +1,101 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, useUser } from "@clerk/nextjs";
-import MenuBar from "../../../components/MenuBar";
+import { motion } from "framer-motion";
+import { Play, Award, Zap, Calendar, ChevronRight, BookOpen, Star, Trophy, Users, Gamepad2, Library, ShoppingBag, Settings, Plus, ChevronDown, Search } from "lucide-react";
+import MenuBar from "@/components/MenuBar";
+import Leaderboard from "@/components/Leaderboard";
+// import { Skeleton } from "../../../components/ui/skeleton";
+// import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "../../../components/ui/card";
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select";
+// import { Button } from "../../../components/ui/button";
+// import { Input } from "../../../components/ui/input";
+
+// Mock implementations - using inline styles instead of missing component imports
+// These will be replaced once the proper shadcn components are installed
+const Card = ({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={`rounded-lg shadow ${className}`} {...props}>{children}</div>
+);
+
+const CardContent = ({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={`p-4 ${className}`} {...props}>{children}</div>
+);
+
+// Mock the Select component and its parts
+const Select = ({ children, onValueChange, value }: { 
+  children: React.ReactNode, 
+  onValueChange: (value: string) => void,
+  value?: string
+}) => {
+  return children;
+};
+
+const SelectTrigger = ({ className, children }: { className?: string, children: React.ReactNode }) => (
+  <div className={className}>{children}</div>
+);
+
+const SelectValue = ({ placeholder }: { placeholder: string }) => (
+  <span>{placeholder}</span>
+);
+
+const SelectContent = ({ className, children }: { className?: string, children: React.ReactNode }) => (
+  <div className={className}>{children}</div>
+);
+
+const SelectItem = ({ className, value, children }: { 
+  className?: string, 
+  value: string,
+  children: React.ReactNode 
+}) => (
+  <div className={className}>{children}</div>
+);
+
+// Mock Button component
+const Button = ({ 
+  variant = "default", 
+  className, 
+  children,
+  onClick,
+  ...props 
+}: { 
+  variant?: string, 
+  className?: string, 
+  children: React.ReactNode,
+  onClick?: () => void,
+  [key: string]: any
+}) => (
+  <button className={className} onClick={onClick} {...props}>{children}</button>
+);
+
+// Mock Input component
+const Input = ({ 
+  type, 
+  placeholder, 
+  value, 
+  onChange, 
+  className 
+}: { 
+  type: string, 
+  placeholder?: string,
+  value?: string,
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void,
+  className?: string
+}) => (
+  <input 
+    type={type} 
+    placeholder={placeholder} 
+    value={value} 
+    onChange={onChange} 
+    className={className} 
+  />
+);
+
+// Mock Skeleton component
+const Skeleton = ({ className }: { className?: string }) => (
+  <div className={className}></div>
+);
 
 // Define the interfaces for our data types
 interface Church {
@@ -24,70 +116,27 @@ interface Metrics {
 interface SermonGame {
   _id: string;
   title: string;
-  status: 'pending' | 'generated' | 'rejected' | 'live' | 'archived';
+  status: 'live' | 'pending' | 'archived';
   createdAt: Date;
   pointsAvailable: number;
+  description?: string;
+  mainVerses?: string[];
 }
 
-// Helper component for Metric Cards
-function MetricCard({ title, value }: { title: string; value: number | string }) {
-  return (
-    <div className="bg-baby-blue/80 dark:bg-soft-indigo rounded-xl shadow-lg p-5 border border-deep-navy/30 dark:border-light-lavender/30 transition-all hover:shadow-xl">
-      <p className="text-deep-navy dark:text-light-lavender text-sm font-bold mb-1 tracking-wide uppercase">{title}</p>
-      <p className="text-4xl font-bold text-deep-navy dark:text-white tracking-tight">{value}</p>
-    </div>
-  );
-}
-
-// Helper component for Action Buttons
-function ActionButton({ onClick, children, bgColor, textColor, hoverBgColor }: {
-  onClick: () => void;
-  children: React.ReactNode;
-  bgColor: string;
-  textColor: string;
-  hoverBgColor: string;
-}) {
-  return (
-    <button 
-      onClick={onClick}
-      className={`${bgColor} ${textColor} ${hoverBgColor} px-5 py-4 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all duration-200 ease-in-out text-center text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-cream-white dark:focus:ring-offset-deep-blue-grey focus:ring-soft-purple/70 hover:scale-105 hover:brightness-105 border-2 border-transparent hover:border-white/20 flex items-center justify-center gap-2`}
-    >
-      {children}
-    </button>
-  );
-}
-
-// Helper component for Status Badge
-function StatusBadge({ status }: { status: SermonGame['status'] }) {
-  const baseStyle = "inline-block px-3 py-1 rounded-full text-xs font-semibold leading-tight";
-  let specificStyle = "";
-
-  switch (status) {
-    case 'live':
-      specificStyle = "bg-green-200 text-green-900 dark:bg-green-300/40 dark:text-green-200";
-      break;
-    case 'pending':
-      specificStyle = "bg-yellow-200 text-yellow-900 dark:bg-yellow-300/40 dark:text-yellow-200";
-      break;
-    case 'archived':
-      specificStyle = "bg-gray-200 text-gray-800 dark:bg-gray-700/60 dark:text-gray-300";
-      break;
-    default:
-      specificStyle = "bg-gray-200 text-gray-800 dark:bg-gray-700/60 dark:text-gray-300";
-  }
-
-  return (
-    <span className={`${baseStyle} ${specificStyle}`}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
-    </span>
-  );
+interface LeaderboardEntry {
+  rank: number;
+  name: string;
+  points: number;
+  gamesPlayed: number;
+  streak?: number;
+  avatar?: string;
 }
 
 export default function ManageChurchPage() {
   const { isLoaded, isSignedIn } = useAuth();
   const { user } = useUser();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
+  const [pageIsLoading, setPageIsLoading] = useState(true);
   const [churches, setChurches] = useState<Church[]>([]);
   const [selectedChurch, setSelectedChurch] = useState<Church | null>(null);
   const [metrics, setMetrics] = useState<Metrics>({
@@ -97,6 +146,8 @@ export default function ManageChurchPage() {
     shopItemsCount: 0
   });
   const [sermonGames, setSermonGames] = useState<SermonGame[]>([]);
+  const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
   
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
@@ -105,7 +156,6 @@ export default function ManageChurchPage() {
     }
     
     if (isLoaded && isSignedIn) {
-      // Fetch user's churches
       fetchUserChurches();
     }
   }, [isLoaded, isSignedIn, router]);
@@ -113,241 +163,419 @@ export default function ManageChurchPage() {
   useEffect(() => {
     if (selectedChurch) {
       fetchChurchData(selectedChurch._id);
+    } else if (churches.length > 0) {
+      setSelectedChurch(churches[0]);
     }
-  }, [selectedChurch]);
+  }, [selectedChurch, churches]);
   
   const fetchUserChurches = async () => {
+    setPageIsLoading(true);
     try {
-      // --- TEMPORARY MOCK DATA --- 
-      const mockChurches = [
-        { _id: 'church1', name: 'First Community Church', location: 'Springfield, IL' },
-        { _id: 'church2', name: 'Grace Chapel', location: 'Metropolis, NY' }
+      const mockChurches: Church[] = [
+        {
+          _id: "church1",
+          name: "First Community Church",
+          location: "Seattle, WA",
+          description: "Serving the community with love and faith.",
+          imageUrl: "/placeholder-church1.jpg",
+        },
+        {
+          _id: "church2",
+          name: "Hope Fellowship",
+          location: "Portland, OR",
+          description: "A place to belong and grow.",
+          imageUrl: "/placeholder-church2.jpg",
+        },
       ];
-      
       setChurches(mockChurches);
-      
-      if (mockChurches.length > 0) {
+      if (!selectedChurch && mockChurches.length > 0) {
         setSelectedChurch(mockChurches[0]);
       }
-      // --- END MOCK DATA ---
-      
-      /* Original fetch logic - temporarily commented out
-      const response = await fetch('/api/churches/user');
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch churches');
-      }
-      
-      const data = await response.json();
-      setChurches(data.churches);
-      
-      // Set the first church as selected if available
-      if (data.churches.length > 0) {
-        setSelectedChurch(data.churches[0]);
-      }
-      */
-      
-      setIsLoading(false);
     } catch (error) {
-      console.error(error);
-      setIsLoading(false);
+      console.error('Error fetching user churches:', error);
+    } finally {
     }
   };
 
   const fetchChurchData = async (churchId: string) => {
+    setPageIsLoading(true);
     try {
-      // This would be a real API call to fetch metrics and games
-      // For now we'll use mock data
       setMetrics({
-        usersCount: 24,
-        gamesPlayedCount: 156,
-        totalGamesCount: 12,
-        shopItemsCount: 8
+        usersCount: Math.floor(Math.random() * 100) + 50,
+        gamesPlayedCount: Math.floor(Math.random() * 500) + 100,
+        totalGamesCount: Math.floor(Math.random() * 20) + 5,
+        shopItemsCount: Math.floor(Math.random() * 30) + 10
       });
       
-      setSermonGames([
+      const mockGames: SermonGame[] = [
         {
-          _id: '1',
+          _id: 'sg1_' + churchId,
           title: 'Love Your Neighbor',
           status: 'live',
-          createdAt: new Date('2023-05-15'),
-          pointsAvailable: 100
+          createdAt: new Date('2023-10-15'),
+          pointsAvailable: 100,
+          description: "Exploring the meaning of Jesus' command.",
+          mainVerses: ['Matthew 22:39']
         },
         {
-          _id: '2',
+          _id: 'sg2_' + churchId,
           title: 'Faith and Works',
           status: 'archived',
-          createdAt: new Date('2023-05-08'),
-          pointsAvailable: 150
+          createdAt: new Date('2023-10-08'),
+          pointsAvailable: 150,
+          description: "Understanding the relationship between faith and action.",
+          mainVerses: ['James 2:17']
         },
         {
-          _id: '3',
+          _id: 'sg3_' + churchId,
           title: 'Fruits of the Spirit',
           status: 'pending',
-          createdAt: new Date('2023-05-22'),
-          pointsAvailable: 200
+          createdAt: new Date('2023-10-22'),
+          pointsAvailable: 200,
+          description: "Living a life filled with God's spirit.",
+          mainVerses: ['Galatians 5:22-23']
         }
-      ]);
+      ];
+      setSermonGames(mockGames);
+
+      const mockLeaderboard: LeaderboardEntry[] = [
+        { rank: 1, name: "Sarah J.", points: Math.floor(Math.random() * 500) + 1000, gamesPlayed: 15, streak: 5 },
+        { rank: 2, name: "Michael C.", points: Math.floor(Math.random() * 400) + 800, gamesPlayed: 12, streak: 3 },
+        { rank: 3, name: "Emily D.", points: Math.floor(Math.random() * 300) + 700, gamesPlayed: 10, streak: 2 },
+        { rank: 4, name: "James W.", points: Math.floor(Math.random() * 200) + 600, gamesPlayed: 8 },
+        { rank: 5, name: "Lisa A.", points: Math.floor(Math.random() * 150) + 500, gamesPlayed: 7 },
+      ];
+      setLeaderboardEntries(mockLeaderboard);
+
     } catch (error) {
       console.error('Error fetching church data:', error);
+    } finally {
+      setPageIsLoading(false);
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin w-8 h-8 border-4 border-soft-purple border-t-transparent rounded-full"></div>
-      </div>
-    );
-  }
+  const handleChurchChange = (churchId: string) => {
+    const church = churches.find(c => c._id === churchId);
+    setSelectedChurch(church || null);
+  };
 
-  if (churches.length === 0) {
+  const filteredSermonGames = sermonGames.filter(game => 
+    game.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  if (pageIsLoading && !selectedChurch) {
     return (
-      <div className="min-h-screen bg-cream-white dark:bg-deep-blue-grey">
-        <MenuBar />
-        <main className="max-w-6xl mx-auto px-4 pt-20 pb-12">
-          <h1 className="text-3xl font-bold text-deep-navy dark:text-light-lavender mb-8">Manage Churches</h1>
-          
-          <div className="text-center p-8 bg-white dark:bg-soft-indigo rounded-xl shadow-md">
-            <h2 className="text-xl font-semibold text-deep-navy dark:text-light-lavender mb-4">You don't have any churches yet</h2>
-            <p className="text-deep-navy/70 dark:text-light-lavender/70 mb-6">Create your first church to start adding games and sermons.</p>
-            <button 
-              onClick={() => router.push('/churches/new')}
-              className="bg-soft-purple text-white px-6 py-3 rounded-xl font-semibold shadow-md hover:opacity-90 transition-opacity"
-            >
-              Create Your First Church
-            </button>
-          </div>
-        </main>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground">
+        <motion.div 
+          className="w-20 h-20 relative"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+        >
+          <div className="absolute inset-0 rounded-full bg-gradient-playful opacity-20"></div>
+          <div className="animate-pulse-custom absolute inset-2 rounded-full bg-gradient-playful opacity-40"></div>
+          <div className="absolute inset-4 rounded-full bg-gradient-playful opacity-60"></div>
+          <div className="absolute inset-6 rounded-full bg-background"></div>
+        </motion.div>
+        <p className="mt-6 text-foreground/70 font-medium text-lg">Loading Church Dashboard...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-cream-white/90 dark:bg-deep-blue-grey">
+    <div className="min-h-screen bg-background text-foreground pb-20">
       <MenuBar />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10">
-          <h1 className="text-3xl font-bold text-deep-navy dark:text-light-lavender mb-4 md:mb-0 tracking-tight">
-            Manage {selectedChurch ? selectedChurch.name : 'Church'}
-          </h1>
+
+
+      <div className="pt-20 pb-6 bg-gradient-pastoral relative overflow-hidden">
+        <div className="absolute -right-12 -top-12 w-64 h-64 bg-white opacity-10 rounded-full"></div>
+        <div className="absolute left-12 bottom-0 w-32 h-32 bg-white opacity-10 rounded-full"></div>
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
+            <div className="mb-6 md:mb-0">
+              <motion.h1 
+                className="text-3xl md:text-4xl font-bold font-fredoka mb-2 text-white"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                {selectedChurch ? `${selectedChurch.name} Dashboard` : 'Manage Church'} ✨
+              </motion.h1>
+              <motion.p 
+                className="text-white/80 text-lg max-w-xl"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+              >
+                {selectedChurch ? selectedChurch.description : "Manage your church's games, sermons, and community."}
+              </motion.p>
+            </div>
           
           {churches.length > 1 && (
-            <select 
-              value={selectedChurch?._id}
-              onChange={(e) => {
-                const church = churches.find(c => c._id === e.target.value);
-                setSelectedChurch(church || null);
-              }}
-              className="mt-2 md:mt-0 p-2 border bg-baby-blue/90 dark:bg-soft-indigo/90 border-deep-navy/30 dark:border-light-lavender/40 rounded-lg text-deep-navy dark:text-white focus:ring-2 focus:ring-soft-purple/80 focus:border-soft-purple text-sm font-semibold shadow-md"
-            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              >
+                <Select onValueChange={handleChurchChange} value={selectedChurch?._id}>
+                  <SelectTrigger className="w-[220px] bg-white/20 backdrop-blur-sm border-none text-white font-medium rounded-xl shadow-playful py-3 px-4 hover:bg-white/30 transition-colors">
+                    <SelectValue placeholder="Select Church" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-soft-indigo border-soft-purple/30 text-white">
               {churches.map((church) => (
-                <option key={church._id} value={church._id}>{church.name}</option>
-              ))}
-            </select>
-          )}
-        </div>
-        
-        {selectedChurch && (
-          <>
-            {/* Engagement Metrics First */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-              <MetricCard title="Church Members" value={metrics.usersCount} />
-              <MetricCard title="Games Played" value={metrics.gamesPlayedCount} />
-              <MetricCard title="Total Games" value={metrics.totalGamesCount} />
-              <MetricCard title="Shop Items" value={metrics.shopItemsCount} />
-            </div>
-
-            {/* Action Buttons Second */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-12">
-              <ActionButton 
-                onClick={() => router.push('/churches/manage/create-sermon')}
-                bgColor="bg-soft-purple"
-                hoverBgColor="hover:bg-soft-purple/90"
-                textColor="text-white"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                New Sermon Game
-              </ActionButton>
-              <ActionButton 
-                onClick={() => router.push(`/churches/${selectedChurch._id}/shop`)}
-                bgColor="bg-baby-blue"
-                hoverBgColor="hover:bg-baby-blue/90"
-                textColor="text-deep-navy"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                </svg>
-                Manage Shop Items
-              </ActionButton>
-              <ActionButton 
-                onClick={() => router.push(`/churches/${selectedChurch._id}/users`)}
-                bgColor="bg-coral-pink"
-                hoverBgColor="hover:bg-coral-pink/90"
-                textColor="text-white"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-                View Users
-              </ActionButton>
-            </div>
-
-            {/* List of Sermon Games Last */}
-            <div className="bg-baby-blue/50 dark:bg-soft-indigo rounded-xl shadow-lg overflow-hidden border border-deep-navy/30 dark:border-light-lavender/30">
-              <div className="flex justify-between items-center px-6 py-4 border-b border-deep-navy/20 dark:border-light-lavender/30 bg-baby-blue/70 dark:bg-deep-blue-grey/80">
-                <h2 className="text-xl font-bold text-deep-navy dark:text-light-lavender tracking-tight">Sermon Games</h2>
-                <button 
-                  onClick={() => router.push('/churches/manage/create-sermon')}
-                  className="text-soft-purple hover:text-soft-purple/90 dark:text-coral-pink dark:hover:text-coral-pink/90 text-sm font-semibold flex items-center transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Add New
-                </button>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[600px]">
-                  <thead className="bg-baby-blue dark:bg-deep-blue-grey">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-deep-navy dark:text-white uppercase tracking-wider">Title</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-deep-navy dark:text-white uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-deep-navy dark:text-white uppercase tracking-wider">Created</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-deep-navy dark:text-white uppercase tracking-wider">Points</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-deep-navy dark:text-white uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-deep-navy/20 dark:divide-light-lavender/30">
-                    {sermonGames.map((game) => (
-                      <tr key={game._id} className="hover:bg-baby-blue/80 dark:hover:bg-deep-blue-grey/90 transition-colors duration-150 ease-in-out">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-deep-navy dark:text-white">{game.title}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <StatusBadge status={game.status} />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-deep-navy dark:text-white">{game.createdAt.toLocaleDateString()}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-deep-navy dark:text-white">{game.pointsAvailable}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button className="text-soft-purple hover:text-soft-purple/90 dark:text-coral-pink dark:hover:text-coral-pink/90 mr-4 transition-colors font-semibold">Edit</button>
-                          <button className="text-red-600 hover:text-red-500 dark:text-red-400 dark:hover:text-red-300 transition-colors font-semibold">Delete</button>
-                        </td>
-                      </tr>
+                      <SelectItem 
+                        key={church._id} 
+                        value={church._id}
+                        className="hover:bg-soft-purple/20 focus:bg-soft-purple/30 cursor-pointer"
+                      >
+                        {church.name}
+                      </SelectItem>
                     ))}
-                  </tbody>
-                </table>
+                  </SelectContent>
+                </Select>
+              </motion.div>
+            )}
+          </div>
+        </div>
+            </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10">
+        <div className="space-y-8">
+          
+          <motion.div 
+            className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"
+            initial="hidden"
+            animate="visible"
+            variants={{ 
+              hidden: { opacity: 0 }, 
+              visible: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.2 } } 
+            }}
+          >
+            {pageIsLoading ? (
+              [...Array(4)].map((_, i) => (
+                <motion.div key={i} variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } }}>
+                  <Skeleton className="h-[110px] rounded-2xl bg-soft-indigo/80" />
+                </motion.div>
+              ))
+            ) : (
+              <>
+                <StatsCard icon={Users} title="Total Users" value={metrics.usersCount} color="soft-purple" />
+                <StatsCard icon={Gamepad2} title="Games Played" value={metrics.gamesPlayedCount} color="warm-peach" subtitle="Past 30 days" />
+                <StatsCard icon={Library} title="Total Games" value={metrics.totalGamesCount} color="baby-blue" subtitle="Available" />
+                <StatsCard icon={ShoppingBag} title="Shop Items" value={metrics.shopItemsCount} color="soft-mint" subtitle="Active Rewards" />
+              </>
+            )}
+          </motion.div>
+
+          <motion.div 
+            className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+          >
+              <ActionButton 
+              icon={Plus} 
+              onClick={() => router.push(`/churches/manage/create-sermon?churchId=${selectedChurch?._id}`)} 
+              variant="default"
+            >
+              New Sermon
+              </ActionButton>
+              <ActionButton 
+              icon={ShoppingBag} 
+              onClick={() => router.push(`/churches/manage/shop?churchId=${selectedChurch?._id}`)} 
+            >
+              Manage Shop
+              </ActionButton>
+              <ActionButton 
+              icon={Settings} 
+              onClick={() => router.push(`/churches/manage/settings?churchId=${selectedChurch?._id}`)} 
+            >
+              Settings
+              </ActionButton>
+          </motion.div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            
+            <motion.div
+              className="lg:col-span-2 space-y-4"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.5 }}
+            >
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold font-fredoka text-foreground flex items-center">
+                  Sermon Games
+                </h2>
+                <div className="relative w-full max-w-xs">
+                  <Input 
+                    type="text" 
+                    placeholder="Search games..." 
+                    value={searchTerm}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
+                    className="bg-soft-indigo border-soft-purple/30 focus:border-soft-purple focus:ring-soft-purple/50 rounded-xl pl-10"
+                  />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-foreground/50" />
+                </div>
               </div>
-              {sermonGames.length === 0 && (
-                <div className="text-center py-10 px-6">
-                  <p className="text-deep-navy dark:text-light-lavender">No sermon games found. Create your first game!</p>
+
+              {pageIsLoading ? (
+                <div className="space-y-4">
+                  {[...Array(3)].map((_, i) => (
+                    <Skeleton key={i} className="h-[120px] rounded-2xl bg-soft-indigo/80" />
+                  ))}
+                </div>
+              ) : filteredSermonGames.length > 0 ? (
+                <div className="space-y-4">
+                  {filteredSermonGames.map((game) => (
+                    <SermonGameListItem key={game._id} game={game} router={router} />
+                  ))}
+              </div>
+              ) : (
+                <Card className="border-dashed border-soft-purple/30 bg-soft-indigo/50 shadow-none">
+                  <CardContent className="pt-6 text-center text-foreground/60">
+                    <p>No sermon games found{searchTerm ? " matching your search" : ""}.</p>
+                    {!searchTerm && (
+                      <Button 
+                        variant="default"
+                        size="sm"
+                        className="mt-4"
+                        onClick={() => router.push(`/churches/manage/create-sermon?churchId=${selectedChurch?._id}`)}
+                      >
+                        <Plus className="mr-2 h-4 w-4" /> Create First Game
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </motion.div>
+
+            <motion.div 
+              className="lg:col-span-1 sticky top-24"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: 0.6 }}
+            >
+              {pageIsLoading ? (
+                <Skeleton className="h-[400px] rounded-2xl bg-soft-indigo/80 w-full max-w-[280px]" /> 
+              ) : (
+                <div className="w-full max-w-[280px]"> 
+                  <Leaderboard entries={leaderboardEntries} />
                 </div>
               )}
+            </motion.div>
+          </div>
+          
+        </div>
             </div>
-          </>
-        )}
-      </main>
     </div>
+  );
+}
+
+function StatsCard({ icon: Icon, title, value, subtitle, color = "soft-purple" }: {
+  icon: React.ElementType;
+  title: string;
+  value: number | string;
+  subtitle?: string;
+  color?: "soft-purple" | "warm-peach" | "baby-blue" | "soft-mint";
+}) {
+  const colorClasses = {
+    "soft-purple": "bg-soft-purple/10 text-soft-purple",
+    "warm-peach": "bg-warm-peach/10 text-warm-peach",
+    "baby-blue": "bg-baby-blue/10 text-baby-blue",
+    "soft-mint": "bg-soft-mint/10 text-soft-mint",
+  };
+  
+  return (
+    <motion.div variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } }}>
+      <Card className="border-none bg-soft-indigo shadow-playful hover:shadow-playful-hover transition-shadow duration-300">
+        <CardContent className="p-3 flex items-center">
+          <div className={`w-8 h-8 rounded-lg ${colorClasses[color]} flex items-center justify-center mr-3 flex-shrink-0`}>
+            <Icon className="h-4 w-4" />
+          </div>
+          <div>
+            <p className="text-foreground/70 text-xs mb-0">{title}</p>
+            <h3 className="text-lg font-bold font-fredoka text-foreground leading-tight">{value}</h3>
+            {subtitle && <p className="text-foreground/50 text-[10px] mt-0">{subtitle}</p>}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+function ActionButton({ icon: Icon, children, onClick, variant = 'secondary', ...props }: {
+  icon?: React.ElementType;
+  children: React.ReactNode;
+  onClick: () => void;
+  variant?: 'default' | 'secondary';
+  [key: string]: any;
+}) {
+  return (
+    <Button 
+      variant={variant}
+      onClick={onClick}
+      className="w-full justify-center gap-2 py-3 h-auto text-base font-medium shadow-playful hover:shadow-playful-hover transition-all duration-300 hover:scale-[1.03]"
+      {...props}
+    >
+      {Icon && <Icon className="h-4 w-4" />}
+      {children}
+    </Button>
+  );
+}
+
+function SermonGameListItem({ game, router }: { 
+  game: SermonGame; 
+  router: ReturnType<typeof useRouter>;
+}) {
+  const getStatusStyles = (status: SermonGame['status']) => {
+    switch (status) {
+      case 'live': return { chip: "bg-soft-mint/20 text-soft-mint", icon: <Zap className="w-3 h-3" /> };
+      case 'pending': return { chip: "bg-warm-peach/20 text-warm-peach", icon: <Calendar className="w-3 h-3" /> };
+      case 'archived': return { chip: "bg-gray-500/20 text-gray-400", icon: <Library className="w-3 h-3" /> };
+      default: return { chip: "bg-gray-500/20 text-gray-400", icon: <Library className="w-3 h-3" /> };
+    }
+  };
+
+  const statusStyle = getStatusStyles(game.status);
+
+  return (
+    <Card 
+      className="border-none bg-soft-indigo shadow-playful hover:shadow-playful-hover transition-all duration-300 group overflow-hidden cursor-pointer"
+      onClick={() => router.push(`/churches/manage/sermon/${game._id}`)}
+    >
+      <div className="flex items-center justify-between p-5">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-soft-purple/10 flex items-center justify-center flex-shrink-0 group-hover:bg-soft-purple/20 transition-colors duration-200">
+            <Library className="h-6 w-6 text-soft-purple" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-semibold text-foreground text-lg truncate mb-1 group-hover:text-soft-purple transition-colors duration-200">{game.title}</h3>
+            <p className="text-sm text-foreground/60 truncate">{game.description || `Created ${new Date(game.createdAt).toLocaleDateString()}`}</p>
+            {game.mainVerses && game.mainVerses.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {game.mainVerses.map((verse, i) => (
+                  <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-full bg-baby-blue/10 text-baby-blue text-xs font-medium">
+                    <BookOpen className="w-3 h-3 mr-1" /> {verse}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-4 flex-shrink-0 ml-4">
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusStyle.chip}`}>
+            {statusStyle.icon}
+            {game.status.charAt(0).toUpperCase() + game.status.slice(1)}
+          </span>
+          <div className="text-right">
+            <span className="block text-foreground font-bold text-base">
+              {game.pointsAvailable} pts
+            </span>
+            <span className="text-foreground/60 text-xs">Available</span>
+          </div>
+          <ChevronRight className="w-5 h-5 text-foreground/40 group-hover:text-soft-purple group-hover:translate-x-1 transition-all duration-200" />
+        </div>
+      </div>
+    </Card>
   );
 }
