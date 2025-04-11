@@ -1,0 +1,222 @@
+{
+  "info": {
+    "_postman_id": "5a384bf7-c237-4b4c-a4e3-3c2bef8fef21",
+    "name": "Sermon Game Generator API",
+    "description": "API collection for the Sermon Game Generator application",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Process Sermon",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"content_type\": \"text\",\n    \"content\": \"This is a sample sermon about faith. Faith is the confidence in what we hope for and assurance about what we do not see. As Hebrews 11:1 tells us, faith is essential to our Christian walk. Jesus often praised those who showed great faith, such as the centurion who believed Jesus could heal his servant with just a word. Let us strive to grow in our faith daily.\",\n    \"custom_prompt\": \"Make the game suitable for teenagers\",\n    \"title\": \"Faith Sermon\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/process-sermon",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "process-sermon"
+          ]
+        },
+        "description": "Process a sermon and generate an interactive game"
+      },
+      "response": []
+    },
+    {
+      "name": "Process YouTube Sermon",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"content_type\": \"youtube\",\n    \"content\": \"https://www.youtube.com/watch?v=Ml0H_OJ5pP4\",\n    \"custom_prompt\": \"Focus on biblical principles and make it engaging for young adults\",\n    \"title\": \"YouTube Sermon\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/process-sermon",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "process-sermon"
+          ]
+        },
+        "description": "Process a sermon from YouTube and generate an interactive game"
+      },
+      "response": []
+    },
+    {
+      "name": "Process PDF Sermon",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"content_type\": \"pdf\",\n    \"content\": \"base64-encoded-pdf-content-here\",\n    \"custom_prompt\": \"Make it suitable for a church small group\",\n    \"title\": \"PDF Sermon\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/process-sermon",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "process-sermon"
+          ]
+        },
+        "description": "Process a PDF sermon and generate an interactive game. Note: The PDF content should be base64 encoded."
+      },
+      "response": []
+    },
+    {
+      "name": "Transcribe Content Only",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"content_type\": \"youtube\",\n    \"content\": \"https://www.youtube.com/watch?v=Ml0H_OJ5pP4\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/transcribe",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "transcribe"
+          ]
+        },
+        "description": "Just transcribe content without generating a game"
+      },
+      "response": []
+    },
+    {
+      "name": "Get Game",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/games/1",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "games",
+            "1"
+          ]
+        },
+        "description": "Get a specific game by its ID"
+      },
+      "response": []
+    },
+    {
+      "name": "Get All Games",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/games",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "games"
+          ]
+        },
+        "description": "Get all available games"
+      },
+      "response": []
+    },
+    {
+      "name": "Get Sermon",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/sermons/1",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "sermons",
+            "1"
+          ]
+        },
+        "description": "Get sermon details by ID"
+      },
+      "response": []
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    }
+  ]
+}
