@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Poppins, Inter, Fredoka } from "next/font/google"; // Import specified fonts
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
+import { ThemeProvider } from "next-themes";
 
 // const geistSans = Geist({
 //   variable: "--font-geist-sans",
@@ -47,14 +48,16 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-    <html lang="en">
-      <body
-        // className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        className={`${poppins.variable} ${inter.variable} ${fredoka.variable} font-inter antialiased`} // Apply Inter as default body font
-      >
-        {children}
-      </body>
-    </html>
+      <html lang="en" suppressHydrationWarning>
+        <body
+          // className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+          className={`${poppins.variable} ${inter.variable} ${fredoka.variable} font-inter antialiased`} // Apply Inter as default body font
+        >
+          <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+            {children}
+          </ThemeProvider>
+        </body>
+      </html>
     </ClerkProvider>
   );
 }

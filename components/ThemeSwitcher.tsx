@@ -3,22 +3,23 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Sun, Moon } from "lucide-react";
+import { useTheme } from "next-themes";
 
 export default function ThemeSwitcher() {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
+  // Wait for component to mount to avoid hydration mismatch
   useEffect(() => {
-    // Check initial theme preference
-    const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    setIsDarkMode(isDark);
-
-    // Apply theme to document
-    document.documentElement.classList.toggle("dark", isDark);
+    setMounted(true);
   }, []);
 
+  if (!mounted) {
+    return null;
+  }
+
   const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-    document.documentElement.classList.toggle("dark");
+    setTheme(theme === "dark" ? "light" : "dark");
   };
 
   return (
@@ -26,16 +27,16 @@ export default function ThemeSwitcher() {
       whileTap={{ scale: 0.95 }}
       whileHover={{ scale: 1.05 }}
       onClick={toggleTheme}
-      className="bg-baby-blue dark:bg-soft-indigo p-2 rounded-full text-deep-navy dark:text-light-lavender"
+      className="bg-accent p-2 rounded-full text-foreground"
       aria-label="Toggle theme"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
     >
-      {isDarkMode ? (
-        <Sun size={20} className="text-light-lavender" />
+      {theme === "dark" ? (
+        <Sun size={20} className="text-foreground" />
       ) : (
-        <Moon size={20} className="text-deep-navy" />
+        <Moon size={20} className="text-foreground" />
       )}
     </motion.button>
   );

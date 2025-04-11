@@ -17,17 +17,15 @@ export default function MenuBar() {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-cream-white/90 dark:bg-deep-blue-grey/90 backdrop-blur-md shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-md shadow-sm border-b border-border">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3">
         <div className="flex justify-between items-center">
           {/* Logo */}
           <div className="flex-shrink-0">
             <Link href="/home">
-              <img
-                src="/play-the-word-logo-2.png"
-                alt="Play The Word"
-                className="h-8 w-auto"
-              />
+              <div className="font-fredoka text-primary text-xl">
+                Play The Word
+              </div>
             </Link>
           </div>
 
@@ -43,11 +41,11 @@ export default function MenuBar() {
             <ThemeSwitcher />
             
             <div className="hidden md:flex md:items-center md:space-x-2">
-              <div className="text-deep-navy dark:text-light-lavender mr-2">
+              <div className="text-foreground mr-2">
                 {user?.firstName || "User"}
               </div>
               <SignOutButton>
-                <button className="bg-soft-purple text-white px-4 py-2 rounded-full text-sm font-semibold shadow-md hover:shadow-lg transition-shadow">
+                <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-semibold shadow-md hover:shadow-lg transition-shadow">
                   Sign Out
                 </button>
               </SignOutButton>
@@ -58,7 +56,7 @@ export default function MenuBar() {
               <button
                 onClick={toggleMenu}
                 aria-label="Toggle menu"
-                className="p-2 rounded-full bg-baby-blue/30 dark:bg-soft-indigo/30 text-deep-navy dark:text-light-lavender"
+                className="p-2 rounded-full bg-accent/30 text-foreground"
               >
                 {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
               </button>
@@ -69,15 +67,15 @@ export default function MenuBar() {
 
       {/* Mobile menu */}
       {isMenuOpen && (
-        <div className="md:hidden bg-cream-white dark:bg-deep-blue-grey">
+        <div className="md:hidden bg-background">
           <div className="px-4 pb-4 space-y-4">
             <MobileNavLink href="/home" onClick={() => setIsMenuOpen(false)}>Dashboard</MobileNavLink>
             <MobileNavLink href="/churches/manage" onClick={() => setIsMenuOpen(false)}>Manage Church</MobileNavLink>
             <MobileNavLink href="/rewards" onClick={() => setIsMenuOpen(false)}>Rewards</MobileNavLink>
             
-            <div className="pt-2 border-t border-deep-navy/10 dark:border-light-lavender/10">
+            <div className="pt-2 border-t border-border/10">
               <SignOutButton>
-                <button className="w-full bg-soft-purple text-white py-3 rounded-xl text-sm font-semibold shadow-md">
+                <button className="w-full bg-primary text-primary-foreground py-3 rounded-xl text-sm font-semibold shadow-md">
                   Sign Out
                 </button>
               </SignOutButton>
@@ -93,7 +91,7 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
   return (
     <Link 
       href={href}
-      className="text-deep-navy dark:text-light-lavender hover:text-soft-purple dark:hover:text-coral-pink font-medium transition-colors"
+      className="text-foreground hover:text-primary font-medium transition-colors"
     >
       {children}
     </Link>
@@ -105,7 +103,7 @@ function MobileNavLink({ href, onClick, children }: { href: string; onClick: () 
     <Link
       href={href}
       onClick={onClick}
-      className="block py-3 text-deep-navy dark:text-light-lavender font-medium border-b border-deep-navy/10 dark:border-light-lavender/10"
+      className="block py-3 text-foreground font-medium border-b border-border/10"
     >
       {children}
     </Link>

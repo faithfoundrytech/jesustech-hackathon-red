@@ -1,14 +1,47 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Light Mode Colors from Styling Guide */
-  --background: #FFF8F1; /* cream-white */
-  --foreground: #2F2F5D; /* deep-navy */
-
-  /* Font Variables (already set in layout.tsx, but good practice to declare) */
-  --font-poppins: "Poppins", sans-serif; /* Fallback */
-  --font-inter: "Inter", sans-serif; /* Fallback */
-  --font-fredoka: "Fredoka", sans-serif; /* Fallback */
+  /* Light Mode Colors - More Pastel, Playful Theme */
+  --background: #FAF7FF; /* light lavender background */
+  --foreground: #3B3663; /* deep purple text */
+  
+  /* Primary Colors */
+  --soft-purple: #7B68EE; /* bright soft purple */
+  --warm-peach: #FFB5A7; /* soft peachy pink */
+  --deep-navy: #3B3663; /* deep purple */
+  
+  /* Secondary Colors */
+  --cream-white: #FAF7FF; /* light lavender */
+  --baby-blue: #AEDFF7; /* soft sky blue */
+  --soft-mint: #B7EFC5; /* light minty green */
+  --lemon-yellow: #FFEF9F; /* soft lemon yellow */
+  --light-coral: #FFC2D1; /* soft pink */
+  
+  /* Font Variables */
+  --font-poppins: "Poppins", sans-serif; 
+  --font-inter: "Inter", sans-serif; 
+  --font-fredoka: "Fredoka", sans-serif;
+  
+  --radius: 1rem; /* increased roundness */
+  --card: #FFFFFF; /* white cards */
+  --card-foreground: #3B3663; /* purple card text */
+  --popover: #FFFFFF;
+  --popover-foreground: #3B3663;
+  --primary: #7B68EE; /* bright soft purple */
+  --primary-foreground: #FFFFFF;
+  --secondary: #FFB5A7; /* soft peachy pink */
+  --secondary-foreground: #3B3663;
+  --muted: #F1F5F9;
+  --muted-foreground: #64748B;
+  --accent: #AEDFF7; /* soft sky blue */
+  --accent-foreground: #3B3663;
+  --destructive: #FF8FA3; /* softer red */
+  --border: #E8E5FF; /* light purple border */
+  --input: #E8E5FF;
+  --ring: #B4A7FF; /* soft purple ring */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -21,8 +54,32 @@
 
 /* Supporting Dark Mode via class for theme switcher */
 .dark {
-  --background: #1E1F2B; /* deep-blue-grey */
-  --foreground: #F3F1FF; /* light-lavender */
+  /* Dark Mode Colors - Deeper but still playful */
+  --background: #232242; /* deep blue-purple background */
+  --foreground: #E8E5FF; /* light purple text */
+  
+  /* Dark Mode Colors */
+  --deep-blue-grey: #232242; /* deep blue-purple background */
+  --soft-indigo: #2E2A5A; /* slightly lighter purple */
+  --light-lavender: #E8E5FF; /* light purple text */
+  --coral-pink: #FF9E9E; /* brighter coral for dark mode */
+  
+  --card: #2E2A5A; /* slightly lighter purple card */
+  --card-foreground: #E8E5FF; /* light purple text */
+  --popover: #2E2A5A;
+  --popover-foreground: #E8E5FF;
+  --primary: #A794FF; /* lighter purple for dark mode */
+  --primary-foreground: #232242;
+  --secondary: #FFB5A7; /* keeping peachy pink */
+  --secondary-foreground: #232242;
+  --muted: #2E2A5A;
+  --muted-foreground: #E8E5FF80;
+  --accent: #71B8FF; /* bright blue for accent */
+  --accent-foreground: #E8E5FF;
+  --destructive: #FF8FA3; /* soft pink */
+  --border: #3D396B; /* subtle border */
+  --input: #3D396B;
+  --ring: #A794FF; /* lighter purple ring */
 }
 
 body {
@@ -51,4 +108,83 @@ html {
 
 .animate-float {
   animation: float 3s ease-in-out infinite;
+}
+
+/* Bounce animation */
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-15px);
+  }
+}
+
+.animate-bounce-slow {
+  animation: bounce 2s ease-in-out infinite;
+}
+
+/* Pulse animation */
+@keyframes pulse-custom {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse-custom {
+  animation: pulse-custom 2s ease-in-out infinite;
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom rounded shadows */
+.shadow-playful {
+  box-shadow: 0 10px 25px -5px rgba(123, 104, 238, 0.15), 0 5px 10px -5px rgba(123, 104, 238, 0.1);
+}
+
+.shadow-playful-hover {
+  box-shadow: 0 15px 30px -5px rgba(123, 104, 238, 0.2), 0 10px 15px -5px rgba(123, 104, 238, 0.15);
+}
+
+.dark .shadow-playful {
+  box-shadow: 0 10px 25px -5px rgba(167, 148, 255, 0.15), 0 5px 10px -5px rgba(167, 148, 255, 0.1);
+}
+
+.dark .shadow-playful-hover {
+  box-shadow: 0 15px 30px -5px rgba(167, 148, 255, 0.2), 0 10px 15px -5px rgba(167, 148, 255, 0.15);
 }
