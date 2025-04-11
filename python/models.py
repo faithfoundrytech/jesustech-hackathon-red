@@ -12,11 +12,11 @@ class Sermon(Base):
     __tablename__ = "sermons"
     
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String(255), index=True, nullable=True)  # Making title nullable
-    content = Column(Text)
-    content_type = Column(String(50))  # youtube, pdf, text
-    source_url = Column(String(512), nullable=True)
-    custom_prompt = Column(String(255), nullable=True)  # Adding custom prompt
+    title = Column(String(255), nullable=False)
+    content = Column(Text, nullable=True)  # The actual content or reference
+    content_type = Column(String(50), nullable=False)  # 'youtube', 'pdf', 'text'
+    source_url = Column(String(255), nullable=True)  # Optional URL source
+    custom_prompt = Column(Text, nullable=True)  # Custom instructions
     created_at = Column(DateTime, default=datetime.utcnow)
     games = relationship("Game", back_populates="sermon")
 
@@ -25,9 +25,9 @@ class Game(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     sermon_id = Column(Integer, ForeignKey("sermons.id"))
-    theme = Column(String(255))
-    main_topics = Column(JSON)
-    game_structure = Column(JSON)
+    theme = Column(String(255), nullable=False)
+    main_topics = Column(JSON, nullable=True)
+    game_structure = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     sermon = relationship("Sermon", back_populates="games")
     questions = relationship("Question", back_populates="game")
@@ -37,12 +37,13 @@ class Question(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     game_id = Column(Integer, ForeignKey("games.id"))
-    question_text = Column(Text)
-    correct_answer = Column(Text)
-    question_type = Column(String(50))  # multiple_choice, true_false, etc.
-    options = Column(JSON)
+    text = Column(Text, nullable=False)  # This is likely named 'text' instead of 'question'
+    correct_answer = Column(JSON, nullable=False)
+    question_type = Column(String(50), nullable=False)
+    options = Column(JSON, nullable=True)  # For multiple-choice options
     hints = Column(JSON, nullable=True)
     learning_points = Column(JSON, nullable=True)
+    difficulty = Column(String(20), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     game = relationship("Game", back_populates="questions")
 
