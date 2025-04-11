@@ -39,9 +39,13 @@ engine = create_engine('sqlite:///sermon_games.db')
 Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 
-# OpenRouter configuration
-OPENROUTER_API_KEY = "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"
+# OpenRouter configuration - get from environment variables with fallback
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "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")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
+# Check if API key is present
+if not OPENROUTER_API_KEY or OPENROUTER_API_KEY == "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":
+    app.logger.warning("OpenRouter API key not set or using fallback value. API calls will likely fail.")
 
 # OpenAI configuration for transcription (using old style API)
 openai.api_key = OPENROUTER_API_KEY
@@ -65,10 +69,12 @@ class Question(BaseModel):
     hints: List[str] = []
     learning_points: List[str] = []
 
-def call_openrouter(prompt: str, model: str = "anthropic/claude-3-opus") -> str:
+def call_openrouter(prompt: str, model: str = "google/gemini-2.0-flash-001") -> str:
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://jesustech-hackathon.com",  # Adding a referer can help with API auth
+        "X-Title": "JesusTech Hackathon"  # Adding application info
     }
     
     data = {
@@ -77,11 +83,24 @@ def call_openrouter(prompt: str, model: str = "anthropic/claude-3-opus") -> str:
     }
     
     try:
+        app.logger.debug(f"Calling OpenRouter API with model: {model}")
         response = requests.post(
             f"{OPENROUTER_BASE_URL}/chat/completions",
             headers=headers,
             json=data
         )
+        
+        # Log API response status for debugging
+        app.logger.debug(f"OpenRouter API response status: {response.status_code}")
+        
+        # Handle common auth errors
+        if response.status_code == 401:
+            app.logger.error("OpenRouter API authorization failed. Please check your API key.")
+            raise Exception("API authorization failed. Please check your API key and ensure it's valid.")
+        elif response.status_code == 403:
+            app.logger.error("OpenRouter API access forbidden. Your account may have restrictions.")
+            raise Exception("API access forbidden. Your account may have restrictions.")
+            
         response.raise_for_status()
         response_data = response.json()
         
@@ -94,7 +113,14 @@ def call_openrouter(prompt: str, model: str = "anthropic/claude-3-opus") -> str:
         return response_data["choices"][0]["message"]["content"]
     except requests.exceptions.RequestException as e:
         app.logger.error(f"OpenRouter API request error: {str(e)}")
-        raise Exception(f"OpenRouter API error: {str(e)}")
+        
+        # Add more detailed error handling for common issues
+        if "401" in str(e):
+            raise Exception("API key unauthorized. Please check your API key or generate a new one.")
+        elif "429" in str(e):
+            raise Exception("API rate limit exceeded. Please try again later.")
+        else:
+            raise Exception(f"OpenRouter API error: {str(e)}")
     except json.JSONDecodeError as e:
         app.logger.error(f"JSON parsing error: {str(e)}, Response content: {response.text}")
         raise Exception(f"Failed to parse API response: {str(e)}")
@@ -104,29 +130,100 @@ def call_openrouter(prompt: str, model: str = "anthropic/claude-3-opus") -> str:
 
 def extract_text_from_youtube(youtube_url):
     """
-    Extract audio from a YouTube video and convert it to text.
+    Extract audio from a YouTube video and convert it to text using OpenAI's transcription API.
     """
     try:
+        # Validate the YouTube URL first
+        if not validate_youtube_url(youtube_url):
+            raise ValueError("Invalid YouTube URL format")
+            
         # Download audio using our helper function with built-in retries
+        app.logger.info(f"Downloading audio from YouTube URL: {youtube_url}")
         audio_file_path = download_youtube_audio(youtube_url)
         
-        # Convert audio to text using existing code
-        # ...existing code for audio conversion...
+        app.logger.info(f"Successfully downloaded audio to {audio_file_path}, beginning transcription")
         
-        return text
+        # Transcribe the audio file
+        with open(audio_file_path, "rb") as audio_file:
+            # Use OpenAI's transcription API
+            transcription = openai.Audio.transcribe(
+                file=audio_file,
+                model="whisper-1", 
+                response_format="text",
+                temperature=0.2,
+                language="en"
+            )
+        
+        # Remove the temporary file
+        try:
+            os.remove(audio_file_path)
+        except Exception as e:
+            app.logger.warning(f"Failed to remove temporary audio file: {str(e)}")
+        
+        app.logger.info(f"Transcription complete: {len(str(transcription))} characters")
+        return str(transcription)
+    
     except Exception as e:
-        logging.error(f"YouTube processing error: {str(e)}")
+        app.logger.error(f"YouTube processing error: {str(e)}", exc_info=True)
         raise Exception(f"YouTube processing error: {str(e)}")
 
 def extract_text_from_pdf(pdf_content: bytes) -> str:
     try:
+        # Check if the content appears to be Base64 encoded
+        if isinstance(pdf_content, str) and pdf_content.startswith("data:application/pdf;base64,"):
+            import base64
+            # Extract the Base64 part
+            base64_content = pdf_content.split("base64,")[1]
+            pdf_content = base64.b64decode(base64_content)
+        elif isinstance(pdf_content, str):
+            # Try to encode the string to bytes
+            pdf_content = pdf_content.encode('utf-8')
+            
+        # Log the type and size of content
+        app.logger.debug(f"PDF content type: {type(pdf_content)}, size: {len(pdf_content)} bytes")
+            
+        # Check if content seems like valid PDF (starts with %PDF)
+        if not pdf_content.startswith(b'%PDF'):
+            app.logger.error("Content doesn't appear to be a valid PDF (missing PDF header)")
+            return "Content doesn't appear to be a valid PDF. Please check the file format."
+            
         pdf_file = io.BytesIO(pdf_content)
         reader = PyPDF2.PdfReader(pdf_file)
+        
+        # Log the number of pages
+        app.logger.debug(f"PDF loaded successfully with {len(reader.pages)} pages")
+        
         text = ""
-        for page in reader.pages:
-            text += page.extract_text()
+        for page_num, page in enumerate(reader.pages):
+            try:
+                page_text = page.extract_text()
+                text += page_text
+                app.logger.debug(f"Extracted {len(page_text)} characters from page {page_num+1}")
+            except Exception as e:
+                app.logger.error(f"Error extracting text from page {page_num+1}: {str(e)}")
+                text += f"\n[Error extracting text from page {page_num+1}]\n"
+                
         return text
+    except PyPDF2.errors.PdfReadError as e:
+        app.logger.error(f"PDF read error: {str(e)}")
+        # Try alternative approach with fallback library
+        try:
+            import pdfminer.high_level
+            output = io.StringIO()
+            pdf_file = io.BytesIO(pdf_content)
+            pdfminer.high_level.extract_text_to_fp(pdf_file, output)
+            return output.getvalue()
+        except ImportError:
+            app.logger.error("pdfminer.six not available for fallback PDF processing")
+            raise Exception(f"PDF processing error (no fallback available): {str(e)}")
+        except Exception as fallback_error:
+            app.logger.error(f"PDF fallback processing failed: {str(fallback_error)}")
+            raise Exception(f"PDF processing error: {str(e)}. Fallback also failed: {str(fallback_error)}")
     except Exception as e:
+        app.logger.error(f"PDF processing error: {str(e)}")
+        if "not a PDF file" in str(e) or "EOF marker not found" in str(e):
+            # Give more helpful error for common issues
+            raise Exception("The provided content doesn't appear to be a valid PDF file. Please check the file format and try again.")
         raise Exception(f"PDF processing error: {str(e)}")
 
 def validate_content_type(content_type: str) -> None:
@@ -207,6 +304,14 @@ def process_sermon():
             return jsonify({"success": False, "error": "No data provided"}), 400
             
         app.logger.info(f"Processing sermon request: {data}")
+        
+        # For debugging PDF issues, log content length
+        if 'content_type' in data and data['content_type'] == 'pdf' and 'content' in data:
+            content_len = len(data['content'])
+            app.logger.debug(f"Received PDF content with length: {content_len}")
+            if content_len < 100:  # Very small PDFs are likely not valid
+                app.logger.warning(f"PDF content suspiciously small: {data['content']}")
+                
         sermon_input = SermonInput(**data)
         validate_content_type(sermon_input.content_type)
         
@@ -214,9 +319,25 @@ def process_sermon():
         if sermon_input.content_type == 'youtube':
             text = extract_text_from_youtube(sermon_input.content)
         elif sermon_input.content_type == 'pdf':
-            text = extract_text_from_pdf(sermon_input.content.encode())
+            try:
+                text = extract_text_from_pdf(sermon_input.content)
+            except Exception as e:
+                # Special handling for PDF errors
+                app.logger.error(f"PDF extraction failed: {str(e)}")
+                return jsonify({
+                    "success": False, 
+                    "error": str(e),
+                    "error_type": "pdf_processing"
+                }), 400
         else:
             text = sermon_input.content
+
+        # If extracted text is empty, return an error
+        if not text or len(text.strip()) < 10:
+            return jsonify({
+                "success": False,
+                "error": "Extracted text is empty or too short. Please provide valid content."
+            }), 400
 
         # Store sermon in database with title
         sermon = Sermon(
@@ -293,16 +414,26 @@ def process_sermon():
         {json.dumps(game_plan.dict())}
         
         For each question:
-        1. Write the question
-        2. Provide the correct answer
-        3. Suggest question type
+        1. Write the question text
+        2. Provide the correct answer (string for single answers, array for multiple answers)
+        3. Use ONLY these specific question types:
+           - single-answer-multiple-choice
+           - multiple-answer-multiple-choice
+           - slider
+           - single-answer-drag-drop
+           - multiple-answer-drag-drop
+           - true-false
+        4. Include fake answer options for multiple choice questions
+        5. Assign a difficulty level
         
         Return ONLY the JSON array with no explanatory text before or after:
         [
             {{
                 "question": "question text",
-                "correct_answer": "correct answer text",
-                "question_type": "multiple_choice"
+                "correct_answer": "correct answer" OR ["answer1", "answer2"] for multiple answers,
+                "question_type": "single-answer-multiple-choice",  # Use only the types listed above
+                "fake_answers": ["fake1", "fake2", "fake3"],
+                "difficulty": "easy"  # easy, medium, or hard
             }},
             ...more questions...
         ]
@@ -340,19 +471,28 @@ def process_sermon():
             Design this question for a game:
             {json.dumps(question_data)}
             
+            Ensure question_type is one of:
+            - single-answer-multiple-choice
+            - multiple-answer-multiple-choice
+            - slider
+            - single-answer-drag-drop
+            - multiple-answer-drag-drop
+            - true-false
+            
             Create:
-            1. Wrong answer options
+            1. Ensure fake_answers exist for multiple-choice questions
             2. Visual elements if needed
             3. Hints or learning points
             
             Return ONLY the JSON with no explanatory text before or after:
             {{
                 "question": "question text",
-                "correct_answer": "correct answer",
-                "question_type": "multiple_choice",
-                "options": ["option1", "option2", "option3", "option4"],
+                "correct_answer": "correct answer" OR ["answer1", "answer2"] for multiple answers,
+                "question_type": "single-answer-multiple-choice",  # Use only approved types
+                "fake_answers": ["option1", "option2", "option3", "option4"],
                 "hints": ["hint1", "hint2"],
-                "learning_points": ["learning point 1", "learning point 2"]
+                "learning_points": ["learning point 1", "learning point 2"],
+                "difficulty": "easy"  # easy, medium, or hard
             }}
             """
             
@@ -372,7 +512,8 @@ def process_sermon():
                     question_type=question_dict['question_type'],
                     options=question_dict.get('options', []),
                     hints=question_dict.get('hints', []),
-                    learning_points=question_dict.get('learning_points', [])
+                    learning_points=question_dict.get('learning_points', []),
+                    difficulty=question_dict.get('difficulty', 'easy')
                 )
                 session.add(question)
                 designed_questions.append(question_dict)

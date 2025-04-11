@@ -8,7 +8,7 @@ class Agent:
     def __init__(self, api_key: str):
         self.api_key = api_key  # Store the API key
         self.client = OpenAI(api_key=api_key)
-        self.model = "anthropic/claude-3-opus"
+        # self.model = "anthropic/claude-3-opus"
         self.logger = logging.getLogger(__name__)
 
     def call_openrouter(self, prompt: str) -> str:
@@ -152,15 +152,23 @@ class QuestionGenerator(Agent):
         Generate {num_questions} questions that:
         1. Test understanding of the sermon
         2. Vary in difficulty
-        3. Include different question types
+        3. Include different question types from this specific list:
+           - single-answer-multiple-choice
+           - multiple-answer-multiple-choice
+           - slider
+           - single-answer-drag-drop
+           - multiple-answer-drag-drop
+           - true-false
         4. Have clear correct answers
+        5. For multiple-choice questions, provide fake answers too
         
         Return the questions as a valid, parseable JSON array with each question having exactly these fields:
         [
             {{
                 "question": "question text",
-                "correct_answer": "correct answer",
-                "question_type": "multiple_choice/true_false/fill_in_blank",
+                "correct_answer": "correct answer" OR ["answer1", "answer2"] for multiple answers,
+                "question_type": "single-answer-multiple-choice/multiple-answer-multiple-choice/slider/single-answer-drag-drop/multiple-answer-drag-drop/true-false",
+                "fake_answers": ["fake1", "fake2", "fake3"],
                 "difficulty": "easy/medium/hard"
             }},
             ... more questions ...
