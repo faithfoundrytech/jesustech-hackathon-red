@@ -1,13 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import ThemeSwitcher from "./ThemeSwitcher";
+import { useAuth } from "@clerk/nextjs";
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { isLoaded, isSignedIn } = useAuth();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -41,13 +44,27 @@ export default function Navbar() {
             <ThemeSwitcher />
             
             <div className="hidden md:block">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="bg-soft-purple text-white px-5 py-2 rounded-full text-sm font-semibold shadow-md hover:shadow-lg transition-shadow"
-              >
-                Sign In
-              </motion.button>
+              {isLoaded && isSignedIn ? (
+                <Link href="/home">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="bg-soft-purple text-white px-5 py-2 rounded-full text-sm font-semibold shadow-md hover:shadow-lg transition-shadow"
+                  >
+                    Dashboard
+                  </motion.button>
+                </Link>
+              ) : (
+                <Link href="/sign-in">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="bg-soft-purple text-white px-5 py-2 rounded-full text-sm font-semibold shadow-md hover:shadow-lg transition-shadow"
+                  >
+                    Sign In
+                  </motion.button>
+                </Link>
+              )}
             </div>
 
             {/* Mobile menu button */}
@@ -81,12 +98,25 @@ export default function Navbar() {
               <MobileNavLink href="#pricing" onClick={() => setIsMenuOpen(false)}>Pricing</MobileNavLink>
               <MobileNavLink href="#contact" onClick={() => setIsMenuOpen(false)}>Contact</MobileNavLink>
               
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                className="w-full bg-soft-purple text-white py-3 rounded-xl text-sm font-semibold shadow-md"
-              >
-                Sign In
-              </motion.button>
+              {isLoaded && isSignedIn ? (
+                <Link href="/home" onClick={() => setIsMenuOpen(false)}>
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    className="w-full bg-soft-purple text-white py-3 rounded-xl text-sm font-semibold shadow-md"
+                  >
+                    Dashboard
+                  </motion.button>
+                </Link>
+              ) : (
+                <Link href="/sign-in" onClick={() => setIsMenuOpen(false)}>
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    className="w-full bg-soft-purple text-white py-3 rounded-xl text-sm font-semibold shadow-md"
+                  >
+                    Sign In
+                  </motion.button>
+                </Link>
+              )}
             </div>
           </motion.div>
         )}

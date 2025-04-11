@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@clerk/nextjs";
 import Navbar from "../components/Navbar";
 import Hero from "../components/Hero";
 import Features from "../components/Features";
@@ -8,6 +11,15 @@ import CTA from "../components/CTA";
 import Footer from "../components/Footer";
 
 export default function Home() {
+  const { isLoaded, isSignedIn } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      router.push("/home");
+    }
+  }, [isLoaded, isSignedIn, router]);
+
   return (
     <main className="min-h-screen">
       <Navbar />
