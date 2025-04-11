@@ -46,15 +46,15 @@ Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 
 # OpenRouter configuration - get from environment variables with fallback
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "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")
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "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")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 # Check if API key is present
-if not OPENROUTER_API_KEY or OPENROUTER_API_KEY == "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":
+if not OPENROUTER_API_KEY or OPENROUTER_API_KEY == "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":
     app.logger.warning("OpenRouter API key not set or using fallback value. API calls will likely fail.")
 
 # OpenAI configuration for transcription (using old style API)
-openai.api_key = "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"
+openai.api_key = "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"
 
 class SermonInput(BaseModel):
     content_type: str  # 'youtube', 'pdf', 'text'
@@ -76,7 +76,7 @@ class QuestionSchema(BaseModel):
     hints: List[str] = []
     learning_points: List[str] = []
 
-def call_openrouter(prompt: str, model: str = "google/gemini-2.0-flash-001") -> str:
+def call_openrouter(prompt: str, model: str = "openai/chatgpt-4o-latest") -> str:
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
