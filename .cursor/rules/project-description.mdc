@@ -1,0 +1,82 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+🧠 Overview
+PlayTheWord is an AI-powered, gamified learning platform designed to deepen Gen Z engagement with weekly church sermons. Pastors upload their sermon content (text or video), and the system automatically generates interactive quizzes and games based on that sermon. Congregants log in, play, learn, and earn points—redeemable for real rewards like church merch, bibles, or services offered by fellow congregants.
+✨ Goals
+Boost sermon retention & engagement among Gen Z church members.
+Gamify faith-based learning through weekly sermon-based quizzes.
+Encourage community generosity by integrating a reward system with real-life prizes.
+👥 Target Users
+Pastors & Church Staff
+Upload sermon material weekly
+Monitor engagement stats
+Approve submitted rewards
+Congregants (Players)
+Play weekly games based on sermons
+Learn and grow in faith interactively
+Earn and redeem points for rewards
+Merchants / Donors (Optional)
+Provide prizes for the reward shop
+Get visibility and connect with the church community
+🧩 Key Features
+1. 🎤 Pastor Interface
+Sermon Upload
+Accepts text, video, or audio formats
+Auto-transcription for video/audio (using AI)
+Metadata Input
+Sermon title, theme, preacher name, date, main bible verses
+AI Processing
+Breaks sermon into key topics, characters, verses
+Generates multiple-choice, slider, drag-and-drop question types
+Adds difficulty scaling for different age groups* (Adult Church, Youth, (Fun GenZ Mode)
+Preview + Approve Game
+Pastor can preview generated questions
+Approve or edit before publishing
+Dashboard
+
+2. 🧠 AI Game Engine
+Natural Language Processing to extract:
+Main characters, key messages, numbers, themes
+Verse references and relationships
+Game Generation
+Generates a mix of:
+Single answer MCQs
+Multiple answer MCQs
+Slider questions (e.g., "How many verses were quoted?")
+Drag-and-drop categorization (e.g., match verses to themes)
+Personalization Engine*
+Learns user’s past performance
+Adjusts difficulty and content per user over time
+3. 🎮 User Gameplay
+Weekly Game Link
+One link per church/sermon per week
+Mobile-optimized game interface
+Login/Signup
+Via phone number or email
+Optional: Church code or name
+
+Gameplay Flow
+Welcome screen (sermon summary + preacher)
+8–12 interactive questions
+Immediate feedback on answers
+Points earned for correct answers, bonus for streaks*
+Leaderboard
+Per church (top scorers that week)
+Per sermon (who nailed that specific sermon’s game)
+4. 🛍️ Rewards Shop
+Prize Upload Interface*
+Admins/pastors upload available rewards
+Include description, point cost, quantity
+Redeem Flow
+User selects a prize
+Confirms redemption
+Redemption status tracked (pending → confirmed)
+Donation Flow
+Congregants can donate a service or prize
+Submission requires approval by admins
+
+
+

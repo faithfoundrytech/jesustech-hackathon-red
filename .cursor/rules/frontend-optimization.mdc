@@ -1,0 +1,72 @@
+---
+description: 
+globs: *.tsx
+alwaysApply: false
+---
+⚛️ React Optimization Instructions
+🎯 Goal:
+Optimize component performance by preventing unnecessary re-renders using React.memo, useCallback, and useMemo.
+
+✅ Use React.memo:
+Wrap functional components that:
+
+Receive props that rarely change
+
+Are pure (same input → same output)
+
+Are child components of frequently re-rendering parents
+
+js
+Copy
+Edit
+const MyComponent = React.memo((props) => { ... });
+🔁 Use useCallback:
+Wrap functions passed as props to memoized components to avoid prop changes on every render.
+
+js
+Copy
+Edit
+const handleClick = useCallback(() => {
+  doSomething();
+}, [doSomething]); // keep dependencies minimal
+Use it only if:
+
+You’re passing the function to a React.memo child
+
+Or it’s used in useEffect/useMemo dependencies
+
+💾 Use useMemo:
+Wrap objects or arrays passed as props or used in heavy computations.
+
+js
+Copy
+Edit
+const config = useMemo(() => ({ darkMode: true }), []);
+Use when:
+
+You’re passing objects/arrays to memoized children
+
+Or performing expensive calculations
+
+📉 Keep Dependency Arrays Minimal:
+In useEffect, useCallback, and useMemo, only include values that the function depends on. Avoid unnecessary dependencies.
+
+Bad:
+
+js
+Copy
+Edit
+useCallback(() => doSomething(), [someState, unusedVar]);
+Good:
+
+js
+Copy
+Edit
+useCallback(() => doSomething(), []);
+🛑 Avoid:
+Re-creating functions/objects inside render unless memoized
+
+Overusing useCallback or useMemo without need
+
+Triggering state changes inside useEffect without condition
+

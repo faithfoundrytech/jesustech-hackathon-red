@@ -1,0 +1,11 @@
+import { SignIn } from "@clerk/nextjs";
+
+export default function SignInPage() {
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-cream-white dark:bg-deep-blue-grey">
+      <div className="w-full max-w-md p-8">
+        <SignIn signUpUrl="/sign-up" redirectUrl="/home" />
+      </div>
+    </div>
+  );
+} 
