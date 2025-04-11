@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 import { IGame } from './Game';
 
-export type QuestionType = 'multiple-choice' | 'slider' | 'drag-drop' | 'true-false';
+export type QuestionType = 'single-answer-multiple-choice' | 'multiple-answer-multiple-choice' | 'slider' | 'single-answer-drag-drop' | 'multiple-answer-drag-drop' | 'true-false';
 
 export interface IQuestion extends Document {
   _id: Types.ObjectId;
