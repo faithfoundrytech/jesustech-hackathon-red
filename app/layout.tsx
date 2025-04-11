@@ -4,6 +4,8 @@ import { Poppins, Inter, Fredoka } from "next/font/google"; // Import specified 
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "next-themes";
+import { Toaster } from "@/components/ui/sonner"
+
 
 // const geistSans = Geist({
 //   variable: "--font-geist-sans",
@@ -55,6 +57,7 @@ export default function RootLayout({
         >
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
             {children}
+            <Toaster />
           </ThemeProvider>
         </body>
       </html>
