@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sermon Game Generator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .hidden { display: none; }
+        .loading { 
+            display: flex; 
+            align-items: center;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .loading-spinner {
+            width: 3rem; 
+            height: 3rem;
+        }
+        .question-card {
+            margin-bottom: 1rem;
+            border-left: 4px solid #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Sermon Game Generator</h1>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3>Upload Sermon</h3>
+            </div>
+            <div class="card-body">
+                <form id="sermonForm">
+                    <div class="mb-3">
+                        <label for="sermonTitle" class="form-label">Sermon Title</label>
+                        <input type="text" class="form-control" id="sermonTitle" placeholder="Enter sermon title">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Content Type</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="contentType" id="typeText" value="text" checked>
+                            <label class="form-check-label" for="typeText">
+                                Text
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="contentType" id="typeYoutube" value="youtube">
+                            <label class="form-check-label" for="typeYoutube">
+                                YouTube URL
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="contentType" id="typePdf" value="pdf">
+                            <label class="form-check-label" for="typePdf">
+                                PDF Document
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div id="textInputGroup" class="mb-3">
+                        <label for="textContent" class="form-label">Sermon Text</label>
+                        <textarea class="form-control" id="textContent" rows="5" placeholder="Enter sermon text"></textarea>
+                    </div>
+                    
+                    <div id="youtubeInputGroup" class="mb-3 hidden">
+                        <label for="youtubeUrl" class="form-label">YouTube URL</label>
+                        <input type="url" class="form-control" id="youtubeUrl" placeholder="https://www.youtube.com/watch?v=...">
+                    </div>
+                    
+                    <div id="pdfInputGroup" class="mb-3 hidden">
+                        <label for="pdfFile" class="form-label">PDF Document</label>
+                        <input class="form-control" type="file" id="pdfFile" accept=".pdf">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="customPrompt" class="form-label">Game Instructions</label>
+                        <textarea class="form-control" id="customPrompt" rows="2" 
+                            placeholder="E.g., Make it suitable for teenagers, Focus on biblical principles, etc."></textarea>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="button" id="transcribeBtn" class="btn btn-secondary">Transcribe Only</button>
+                        <button type="submit" id="generateBtn" class="btn btn-primary">Generate Game</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div id="loadingIndicator" class="loading hidden">
+            <div class="spinner-border loading-spinner text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <span class="ms-3">Processing, please wait...</span>
+        </div>
+        
+        <div id="transcriptionResult" class="card mb-4 hidden">
+            <div class="card-header">
+                <h3>Transcription Result</h3>
+            </div>
+            <div class="card-body">
+                <pre id="transcriptionText" class="p-3 bg-light"></pre>
+            </div>
+        </div>
+        
+        <div id="gameResult" class="hidden">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3>Game Plan</h3>
+                </div>
+                <div class="card-body">
+                    <h4 id="gameTheme" class="mb-3"></h4>
+                    
+                    <div class="mb-3">
+                        <h5>Main Topics:</h5>
+                        <ul id="gameTopics" class="list-group"></ul>
+                    </div>
+                    
+                    <div>
+                        <h5>Game Structure:</h5>
+                        <pre id="gameStructure" class="p-3 bg-light"></pre>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h3>Game Questions</h3>
+                </div>
+                <div class="card-body">
+                    <div id="questionsContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/url-utils.js"></script>
+    <script src="js/api-client.js"></script>
+    <script>
+        // Initialize API client with consistent base URL
+        const api = new SermonGameAPI(getBaseUrl());
+        
+        // Form elements
+        const sermonForm = document.getElementById('sermonForm');
+        const contentTypeRadios = document.querySelectorAll('input[name="contentType"]');
+        const textInputGroup = document.getElementById('textInputGroup');
+        const youtubeInputGroup = document.getElementById('youtubeInputGroup');
+        const pdfInputGroup = document.getElementById('pdfInputGroup');
+        
+        // Result elements
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const transcriptionResult = document.getElementById('transcriptionResult');
+        const transcriptionText = document.getElementById('transcriptionText');
+        const gameResult = document.getElementById('gameResult');
+        
+        // Button handlers
+        document.getElementById('transcribeBtn').addEventListener('click', handleTranscribe);
+        sermonForm.addEventListener('submit', handleGenerateGame);
+        
+        // Set up content type radio button change handler
+        contentTypeRadios.forEach(radio => {
+            radio.addEventListener('change', updateInputVisibility);
+        });
+        
+        function updateInputVisibility() {
+            const selectedType = document.querySelector('input[name="contentType"]:checked').value;
+            
+            textInputGroup.classList.add('hidden');
+            youtubeInputGroup.classList.add('hidden');
+            pdfInputGroup.classList.add('hidden');
+            
+            if (selectedType === 'text') {
+                textInputGroup.classList.remove('hidden');
+            } else if (selectedType === 'youtube') {
+                youtubeInputGroup.classList.remove('hidden');
+            } else if (selectedType === 'pdf') {
+                pdfInputGroup.classList.remove('hidden');
+            }
+        }
+        
+        async function getContent() {
+            const selectedType = document.querySelector('input[name="contentType"]:checked').value;
+            
+            if (selectedType === 'text') {
+                return document.getElementById('textContent').value;
+            } else if (selectedType === 'youtube') {
+                return document.getElementById('youtubeUrl').value;
+            } else if (selectedType === 'pdf') {
+                const fileInput = document.getElementById('pdfFile');
+                if (fileInput.files.length === 0) {
+                    throw new Error('Please select a PDF file');
+                }
+                return await api.encodePDFAsBase64(fileInput.files[0]);
+            }
+        }
+        
+        async function handleTranscribe(event) {
+            event.preventDefault();
+            
+            try {
+                const selectedType = document.querySelector('input[name="contentType"]:checked').value;
+                const content = await getContent();
+                
+                if (!content) {
+                    alert('Please enter sermon content');
+                    return;
+                }
+                
+                // Show loading indicator
+                loadingIndicator.classList.remove('hidden');
+                gameResult.classList.add('hidden');
+                transcriptionResult.classList.add('hidden');
+                
+                // Call API
+                const response = await api.transcribeContent(selectedType, content);
+                
+                if (response.success) {
+                    transcriptionText.textContent = response.transcription;
+                    transcriptionResult.classList.remove('hidden');
+                } else {
+                    alert('Transcription failed: ' + response.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                loadingIndicator.classList.add('hidden');
+            }
+        }
+        
+        async function handleGenerateGame(event) {
+            event.preventDefault();
+            
+            try {
+                const selectedType = document.querySelector('input[name="contentType"]:checked').value;
+                const content = await getContent();
+                const title = document.getElementById('sermonTitle').value;
+                const customPrompt = document.getElementById('customPrompt').value;
+                
+                if (!content) {
+                    alert('Please enter sermon content');
+                    return;
+                }
+                
+                // Show loading indicator
+                loadingIndicator.classList.remove('hidden');
+                gameResult.classList.add('hidden');
+                transcriptionResult.classList.add('hidden');
+                
+                // Call API
+                const response = await api.processSermon(selectedType, content, customPrompt, title);
+                
+                if (response.success) {
+                    displayGameResult(response);
+                } else {
+                    alert('Game generation failed: ' + response.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                loadingIndicator.classList.add('hidden');
+            }
+        }
+        
+        function displayGameResult(response) {
+            // Display game plan
+            document.getElementById('gameTheme').textContent = response.game_plan.theme;
+            
+            const topicsList = document.getElementById('gameTopics');
+            topicsList.innerHTML = '';
+            response.game_plan.main_topics.forEach(topic => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item';
+                li.textContent = topic;
+                topicsList.appendChild(li);
+            });
+            
+            document.getElementById('gameStructure').textContent = 
+                JSON.stringify(response.game_plan.game_structure, null, 2);
+            
+            // Display questions
+            const questionsContainer = document.getElementById('questionsContainer');
+            questionsContainer.innerHTML = '';
+            
+            response.questions.forEach((question, index) => {
+                const card = document.createElement('div');
+                card.className = 'card question-card';
+                
+                const cardHeader = document.createElement('div');
+                cardHeader.className = 'card-header';
+                cardHeader.innerHTML = `<strong>Question ${index + 1}:</strong> ${question.question}`;
+                
+                const cardBody = document.createElement('div');
+                cardBody.className = 'card-body';
+                
+                let cardContent = `<p><strong>Type:</strong> ${question.question_type}</p>`;
+                cardContent += `<p><strong>Correct answer:</strong> ${question.correct_answer}</p>`;
+                
+                if (question.options && question.options.length) {
+                    cardContent += '<p><strong>Options:</strong></p><ul>';
+                    question.options.forEach(option => {
+                        cardContent += `<li>${option}</li>`;
+                    });
+                    cardContent += '</ul>';
+                }
+                
+                if (question.hints && question.hints.length) {
+                    cardContent += '<p><strong>Hints:</strong></p><ul>';
+                    question.hints.forEach(hint => {
+                        cardContent += `<li>${hint}</li>`;
+                    });
+                    cardContent += '</ul>';
+                }
+                
+                if (question.learning_points && question.learning_points.length) {
+                    cardContent += '<p><strong>Learning points:</strong></p><ul>';
+                    question.learning_points.forEach(point => {
+                        cardContent += `<li>${point}</li>`;
+                    });
+                    cardContent += '</ul>';
+                }
+                
+                cardBody.innerHTML = cardContent;
+                
+                card.appendChild(cardHeader);
+                card.appendChild(cardBody);
+                questionsContainer.appendChild(card);
+            });
+            
+            // Show the result
+            gameResult.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>

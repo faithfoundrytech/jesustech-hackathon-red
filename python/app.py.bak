@@ -1,0 +1,277 @@
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import os
+from dotenv import load_dotenv
+import requests
+import json
+from typing import List, Dict, Any
+from pydantic import BaseModel
+import pytube
+import PyPDF2
+import magic
+import io
+import tempfile
+import subprocess
+import openai  # Use the old-style import instead of OpenAI class
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from models import Base, Sermon, Game, Question
+
+app = Flask(__name__)
+CORS(app)
+
+# Load environment variables
+load_dotenv()
+
+# Database setup
+engine = create_engine('sqlite:///sermon_games.db')
+Base.metadata.create_all(engine)
+Session = sessionmaker(bind=engine)
+
+# OpenRouter configuration
+OPENROUTER_API_KEY = "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"
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
+# OpenAI configuration for transcription (using old style API)
+openai.api_key = OPENROUTER_API_KEY
+
+class SermonInput(BaseModel):
+    content_type: str  # 'youtube', 'pdf', 'text'
+    content: str  # URL or text content
+    custom_prompt: str = "" 
+
+class GamePlan(BaseModel):
+    theme: str
+    main_topics: List[str]
+    game_structure: Dict[str, Any]
+
+class Question(BaseModel):
+    question: str
+    correct_answer: str
+    question_type: str  # 'multiple_choice', 'slider', 'text'
+    options: List[str] = []
+    hints: List[str] = []
+    learning_points: List[str] = []
+
+def call_openrouter(prompt: str, model: str = "anthropic/claude-3-opus") -> str:
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    data = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}]
+    }
+    
+    try:
+        response = requests.post(
+            f"{OPENROUTER_BASE_URL}/chat/completions",
+            headers=headers,
+            json=data
+        )
+        response.raise_for_status()
+        return response.json()["choices"][0]["message"]["content"]
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"OpenRouter API error: {str(e)}")
+
+def extract_text_from_youtube(url: str) -> str:
+    try:
+        # Download audio from YouTube
+        yt = pytube.YouTube(url)
+        audio_stream = yt.streams.filter(only_audio=True).first()
+        
+        if not audio_stream:
+            raise Exception("No audio stream found in the YouTube video")
+            
+        # Create temporary file for audio
+        with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as temp_file:
+            audio_stream.download(filename=temp_file.name)
+            
+            # Transcribe using OpenAI Whisper (old style API)
+            with open(temp_file.name, "rb") as audio_file:
+                transcription = openai.Audio.transcribe(
+                    "whisper-1", 
+                    audio_file
+                )
+                
+        # Clean up temporary file
+        os.unlink(temp_file.name)
+        
+        return transcription.text
+    except Exception as e:
+        raise Exception(f"YouTube processing error: {str(e)}")
+
+def extract_text_from_pdf(pdf_content: bytes) -> str:
+    try:
+        pdf_file = io.BytesIO(pdf_content)
+        reader = PyPDF2.PdfReader(pdf_file)
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text()
+        return text
+    except Exception as e:
+        raise Exception(f"PDF processing error: {str(e)}")
+
+def validate_content_type(content_type: str) -> None:
+    valid_types = ['youtube', 'pdf', 'text']
+    if content_type not in valid_types:
+        raise ValueError(f"Invalid content_type. Must be one of: {', '.join(valid_types)}")
+
+@app.route('/api/process-sermon', methods=['POST'])
+def process_sermon():
+    session = Session()
+    try:
+        data = request.json
+        if not data:
+            return jsonify({"success": False, "error": "No data provided"}), 400
+            
+        sermon_input = SermonInput(**data)
+        validate_content_type(sermon_input.content_type)
+        
+        # Extract text based on content type
+        if sermon_input.content_type == 'youtube':
+            text = extract_text_from_youtube(sermon_input.content)
+        elif sermon_input.content_type == 'pdf':
+            text = extract_text_from_pdf(sermon_input.content.encode())
+        else:
+            text = sermon_input.content
+
+        # Store sermon in database
+        sermon = Sermon(
+            content_type=sermon_input.content_type,
+            content=sermon_input.content,
+            custom_prompt=sermon_input.custom_prompt
+        )
+        session.add(sermon)
+        session.commit()
+
+        # Planner Agent
+        planner_prompt = f"""
+        Analyze this sermon and create a game plan:
+        {text}
+        
+        Custom requirements: {sermon_input.custom_prompt}
+        
+        Create a structured plan with:
+        1. Main theme
+        2. Key topics
+        3. Game structure (how to make it engaging)
+        
+        Return the response in valid JSON format.
+        """
+        
+        planner_response = call_openrouter(planner_prompt)
+        game_plan = GamePlan(**json.loads(planner_response))
+
+        # Store game in database
+        game = Game(
+            sermon_id=sermon.id,
+            theme=game_plan.theme,
+            main_topics=game_plan.main_topics,
+            game_structure=game_plan.game_structure
+        )
+        session.add(game)
+        session.commit()
+
+        # Question Writer Agent
+        question_writer_prompt = f"""
+        Based on this game plan, create 8-12 questions:
+        {json.dumps(game_plan.dict())}
+        
+        For each question:
+        1. Write the question
+        2. Provide the correct answer
+        3. Suggest question type
+        
+        Return the response in valid JSON format as a list of questions.
+        """
+        
+        question_writer_response = call_openrouter(question_writer_prompt)
+        questions = json.loads(question_writer_response)
+
+        # Question Designer Agent
+        designed_questions = []
+        for question_data in questions:
+            designer_prompt = f"""
+            Design this question for a game:
+            {json.dumps(question_data)}
+            
+            Create:
+            1. Wrong answer options
+            2. Visual elements if needed
+            3. Hints or learning points
+            
+            Return the response in valid JSON format.
+            """
+            
+            designed_question = call_openrouter(designer_prompt)
+            question_dict = json.loads(designed_question)
+            
+            # Store question in database
+            question = Question(
+                game_id=game.id,
+                question=question_dict['question'],
+                correct_answer=question_dict['correct_answer'],
+                question_type=question_dict['question_type'],
+                options=question_dict.get('options', []),
+                hints=question_dict.get('hints', []),
+                learning_points=question_dict.get('learning_points', [])
+            )
+            session.add(question)
+            designed_questions.append(question_dict)
+
+        session.commit()
+
+        return jsonify({
+            "success": True,
+            "game_plan": game_plan.dict(),
+            "questions": designed_questions,
+            "sermon_id": sermon.id,
+            "game_id": game.id
+        })
+
+    except ValueError as e:
+        session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+    except Exception as e:
+        session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        session.close()
+
+@app.route('/api/games/<int:game_id>', methods=['GET'])
+def get_game(game_id):
+    session = Session()
+    try:
+        game = session.query(Game).filter_by(id=game_id).first()
+        if not game:
+            return jsonify({"success": False, "error": "Game not found"}), 404
+            
+        questions = session.query(Question).filter_by(game_id=game_id).all()
+        
+        return jsonify({
+            "success": True,
+            "game": {
+                "id": game.id,
+                "theme": game.theme,
+                "main_topics": game.main_topics,
+                "game_structure": game.game_structure,
+                "questions": [{
+                    "id": q.id,
+                    "question": q.question,
+                    "correct_answer": q.correct_answer,
+                    "question_type": q.question_type,
+                    "options": q.options,
+                    "hints": q.hints,
+                    "learning_points": q.learning_points
+                } for q in questions]
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        session.close()
+
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
