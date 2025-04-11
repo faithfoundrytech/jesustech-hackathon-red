@@ -12,14 +12,13 @@ import magic
 import io
 import tempfile
 import subprocess
+import openai  # Use the old-style import instead of OpenAI class
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from models import Base, Sermon, Game, Question as QuestionModel  # Rename to avoid conflict
 import re
 import time
 import logging
-# Add Google Generative AI import
-import google.generativeai as genai
 # Update the import to include all needed functions
 from utils.youtube_helpers import (
     download_youtube_audio, 
@@ -46,15 +45,16 @@ engine = create_engine('sqlite:///sermon_games.db')
 Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 
-# Replace OpenRouter configuration with Gemini configuration
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyAMUKeFNRZtqXaBR02aZz3rjQrR_8rENCE")
-
-# Configure Google Generative AI with the API key
-genai.configure(api_key=GEMINI_API_KEY)
+# OpenRouter configuration - get from environment variables with fallback
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "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")
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 # Check if API key is present
-if not GEMINI_API_KEY or GEMINI_API_KEY == "AIzaSyAMUKeFNRZtqXaBR02aZz3rjQrR_8rENCE":
-    app.logger.warning("Using provided Gemini API key. Make sure it's valid for production.")
+if not OPENROUTER_API_KEY or OPENROUTER_API_KEY == "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":
+    app.logger.warning("OpenRouter API key not set or using fallback value. API calls will likely fail.")
+
+# OpenAI configuration for transcription (using old style API)
+openai.api_key = OPENROUTER_API_KEY
 
 class SermonInput(BaseModel):
     content_type: str  # 'youtube', 'pdf', 'text'
@@ -76,44 +76,64 @@ class QuestionSchema(BaseModel):
     hints: List[str] = []
     learning_points: List[str] = []
 
-def call_openrouter(prompt: str, model: str = "gemini-1.5-pro") -> str:
-    """
-    Call Gemini API directly instead of using OpenRouter
-    """
+def call_openrouter(prompt: str, model: str = "google/gemini-2.0-flash-001") -> str:
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://jesustech-hackathon.com",  # Adding a referer can help with API auth
+        "X-Title": "JesusTech Hackathon"  # Adding application info
+    }
+    
+    data = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}]
+    }
+    
     try:
-        app.logger.debug(f"Calling Gemini API with model: {model}")
+        app.logger.debug(f"Calling OpenRouter API with model: {model}")
+        response = requests.post(
+            f"{OPENROUTER_BASE_URL}/chat/completions",
+            headers=headers,
+            json=data
+        )
         
-        # Configure the model
-        generation_config = {
-            "temperature": 0.7,
-            "top_p": 0.95,
-            "top_k": 40,
-            "max_output_tokens": 8192,
-        }
+        # Log API response status for debugging
+        app.logger.debug(f"OpenRouter API response status: {response.status_code}")
         
-        # Initialize the model
-        gemini_model = genai.GenerativeModel(model_name=model, 
-                                          generation_config=generation_config)
+        # Handle common auth errors
+        if response.status_code == 401:
+            app.logger.error("OpenRouter API authorization failed. Please check your API key.")
+            raise Exception("API authorization failed. Please check your API key and ensure it's valid.")
+        elif response.status_code == 403:
+            app.logger.error("OpenRouter API access forbidden. Your account may have restrictions.")
+            raise Exception("API access forbidden. Your account may have restrictions.")
+            
+        response.raise_for_status()
+        response_data = response.json()
         
-        # Generate content
-        response = gemini_model.generate_content(prompt)
+        # Log response for debugging
+        app.logger.debug(f"OpenRouter API response: {response_data}")
         
-        # Log for debugging
-        app.logger.debug("Gemini API response received")
-        
-        # Return the text content
-        return response.text
-        
-    except Exception as e:
-        app.logger.error(f"Gemini API error: {str(e)}", exc_info=True)
+        if "choices" not in response_data or not response_data["choices"] or "message" not in response_data["choices"][0]:
+            raise Exception(f"Unexpected API response format: {response_data}")
+            
+        return response_data["choices"][0]["message"]["content"]
+    except requests.exceptions.RequestException as e:
+        app.logger.error(f"OpenRouter API request error: {str(e)}")
         
         # Add more detailed error handling for common issues
-        if "API key not valid" in str(e):
+        if "401" in str(e):
             raise Exception("API key unauthorized. Please check your API key or generate a new one.")
-        elif "quota" in str(e).lower():
-            raise Exception("API quota exceeded. Please try again later.")
+        elif "429" in str(e):
+            raise Exception("API rate limit exceeded. Please try again later.")
         else:
-            raise Exception(f"Gemini API error: {str(e)}")
+            raise Exception(f"OpenRouter API error: {str(e)}")
+    except json.JSONDecodeError as e:
+        app.logger.error(f"JSON parsing error: {str(e)}, Response content: {response.text}")
+        raise Exception(f"Failed to parse API response: {str(e)}")
+    except Exception as e:
+        app.logger.error(f"Unexpected error in call_openrouter: {str(e)}")
+        raise
 
 def extract_text_from_youtube(youtube_url):
     """
