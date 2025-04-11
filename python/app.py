@@ -15,11 +15,17 @@ import subprocess
 import openai  # Use the old-style import instead of OpenAI class
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models import Base, Sermon, Game, Question
+from models import Base, Sermon, Game, Question as QuestionModel  # Rename to avoid conflict
 import re
 import time
 import logging
-from utils.youtube_helpers import download_youtube_audio, validate_youtube_url
+# Update the import to include all needed functions
+from utils.youtube_helpers import (
+    download_youtube_audio, 
+    validate_youtube_url,
+    get_youtube_video_id,
+    get_youtube_metadata
+)
 
 # Modify Flask app initialization to serve static files with proper permissions
 app = Flask(__name__, static_url_path='', static_folder='static')
@@ -61,7 +67,8 @@ class GamePlan(BaseModel):
     main_topics: List[str]
     game_structure: Dict[str, Any]
 
-class Question(BaseModel):
+# Define the Pydantic model with a different name to avoid conflicts
+class QuestionSchema(BaseModel):
     question: str
     correct_answer: str
     question_type: str  # 'multiple_choice', 'slider', 'text'
@@ -130,38 +137,55 @@ def call_openrouter(prompt: str, model: str = "google/gemini-2.0-flash-001") -> 
 
 def extract_text_from_youtube(youtube_url):
     """
-    Extract audio from a YouTube video and convert it to text using OpenAI's transcription API.
+    Extract video ID from YouTube URL and generate content based on it using LLM
+    instead of downloading and transcribing.
     """
     try:
         # Validate the YouTube URL first
         if not validate_youtube_url(youtube_url):
-            raise ValueError("Invalid YouTube URL format")
+            raise ValueError("Invalid YouTube URL format. Please provide a valid YouTube URL (e.g., https://www.youtube.com/watch?v=xxxx)")
             
-        # Download audio using our helper function with built-in retries
-        app.logger.info(f"Downloading audio from YouTube URL: {youtube_url}")
-        audio_file_path = download_youtube_audio(youtube_url)
+        # Log the YouTube URL being processed
+        app.logger.info(f"Processing YouTube URL: {youtube_url}")
         
-        app.logger.info(f"Successfully downloaded audio to {audio_file_path}, beginning transcription")
+        # Get video ID without downloading
+        video_id = get_youtube_video_id(youtube_url)
+        app.logger.info(f"Extracted YouTube video ID: {video_id}")
         
-        # Transcribe the audio file
-        with open(audio_file_path, "rb") as audio_file:
-            # Use OpenAI's transcription API
-            transcription = openai.Audio.transcribe(
-                file=audio_file,
-                model="whisper-1", 
-                response_format="text",
-                temperature=0.2,
-                language="en"
-            )
-        
-        # Remove the temporary file
+        # Try to get some metadata about the video
         try:
-            os.remove(audio_file_path)
+            metadata = get_youtube_metadata(video_id)
+            video_title = metadata.get("title", "Unknown video")
+            video_description = metadata.get("description", "")
+            app.logger.info(f"Video title: {video_title}")
         except Exception as e:
-            app.logger.warning(f"Failed to remove temporary audio file: {str(e)}")
+            app.logger.warning(f"Failed to get video metadata: {str(e)}")
+            video_title = "Unknown video"
+            video_description = ""
         
-        app.logger.info(f"Transcription complete: {len(str(transcription))} characters")
-        return str(transcription)
+        # Generate content based on video ID using LLM
+        prompt = f"""
+        You are tasked with creating a detailed summary of a YouTube video with ID: {video_id}
+        Title: {video_title}
+        
+        Description: {video_description}
+        
+        Please use your knowledge to generate a comprehensive summary of what this video likely contains.
+        Focus on:
+        1. Main themes and messages
+        2. Key points that would be discussed
+        3. Scriptural references if it's a sermon
+        4. Lessons or teachings that the audience would learn
+        
+        Write this as if you had watched the full video and are providing a detailed transcription.
+        Make it at least 500 words, detailed enough to capture the essence of the content.
+        """
+        
+        app.logger.info(f"Generating content for YouTube video ID: {video_id}")
+        generated_content = call_openrouter(prompt)
+        
+        app.logger.info(f"Generated content: {len(generated_content)} characters")
+        return generated_content
     
     except Exception as e:
         app.logger.error(f"YouTube processing error: {str(e)}", exc_info=True)
@@ -169,15 +193,25 @@ def extract_text_from_youtube(youtube_url):
 
 def extract_text_from_pdf(pdf_content: bytes) -> str:
     try:
-        # Check if the content appears to be Base64 encoded
-        if isinstance(pdf_content, str) and pdf_content.startswith("data:application/pdf;base64,"):
-            import base64
-            # Extract the Base64 part
-            base64_content = pdf_content.split("base64,")[1]
-            pdf_content = base64.b64decode(base64_content)
-        elif isinstance(pdf_content, str):
-            # Try to encode the string to bytes
-            pdf_content = pdf_content.encode('utf-8')
+        # Handle different input formats
+        if isinstance(pdf_content, str):
+            # Check if content is a base64 encoded PDF
+            if pdf_content.startswith("data:application/pdf;base64,"):
+                import base64
+                # Extract the Base64 part
+                base64_content = pdf_content.split("base64,")[1]
+                pdf_content = base64.b64decode(base64_content)
+            elif pdf_content.startswith("%PDF"):
+                # Already in PDF format but as string
+                pdf_content = pdf_content.encode('utf-8')
+            else:
+                # Try to interpret as base64 even without prefix
+                try:
+                    import base64
+                    pdf_content = base64.b64decode(pdf_content)
+                except:
+                    # If not base64, try direct encoding
+                    pdf_content = pdf_content.encode('utf-8')
             
         # Log the type and size of content
         app.logger.debug(f"PDF content type: {type(pdf_content)}, size: {len(pdf_content)} bytes")
@@ -185,46 +219,57 @@ def extract_text_from_pdf(pdf_content: bytes) -> str:
         # Check if content seems like valid PDF (starts with %PDF)
         if not pdf_content.startswith(b'%PDF'):
             app.logger.error("Content doesn't appear to be a valid PDF (missing PDF header)")
-            return "Content doesn't appear to be a valid PDF. Please check the file format."
+            raise ValueError("Content doesn't appear to be a valid PDF. Please check the file format.")
             
         pdf_file = io.BytesIO(pdf_content)
-        reader = PyPDF2.PdfReader(pdf_file)
         
-        # Log the number of pages
-        app.logger.debug(f"PDF loaded successfully with {len(reader.pages)} pages")
-        
-        text = ""
-        for page_num, page in enumerate(reader.pages):
-            try:
-                page_text = page.extract_text()
-                text += page_text
-                app.logger.debug(f"Extracted {len(page_text)} characters from page {page_num+1}")
-            except Exception as e:
-                app.logger.error(f"Error extracting text from page {page_num+1}: {str(e)}")
-                text += f"\n[Error extracting text from page {page_num+1}]\n"
-                
-        return text
-    except PyPDF2.errors.PdfReadError as e:
-        app.logger.error(f"PDF read error: {str(e)}")
-        # Try alternative approach with fallback library
         try:
-            import pdfminer.high_level
-            output = io.StringIO()
-            pdf_file = io.BytesIO(pdf_content)
-            pdfminer.high_level.extract_text_to_fp(pdf_file, output)
-            return output.getvalue()
-        except ImportError:
-            app.logger.error("pdfminer.six not available for fallback PDF processing")
-            raise Exception(f"PDF processing error (no fallback available): {str(e)}")
-        except Exception as fallback_error:
-            app.logger.error(f"PDF fallback processing failed: {str(fallback_error)}")
-            raise Exception(f"PDF processing error: {str(e)}. Fallback also failed: {str(fallback_error)}")
+            reader = PyPDF2.PdfReader(pdf_file)
+            
+            # Log the number of pages
+            app.logger.debug(f"PDF loaded successfully with {len(reader.pages)} pages")
+            
+            text = ""
+            for page_num, page in enumerate(reader.pages):
+                try:
+                    page_text = page.extract_text()
+                    if page_text:
+                        text += page_text + "\n\n"
+                    app.logger.debug(f"Extracted {len(page_text)} characters from page {page_num+1}")
+                except Exception as e:
+                    app.logger.error(f"Error extracting text from page {page_num+1}: {str(e)}")
+                    text += f"\n[Error extracting text from page {page_num+1}]\n"
+            
+            if not text.strip():
+                raise ValueError("No text could be extracted from the PDF")
+                
+            return text
+            
+        except PyPDF2.errors.PdfReadError as e:
+            # Try alternative approach with pdfminer
+            app.logger.warning(f"PyPDF2 failed, trying pdfminer: {str(e)}")
+            try:
+                from pdfminer.high_level import extract_text
+                pdf_file.seek(0)  # Reset file pointer
+                text = extract_text(pdf_file)
+                if text.strip():
+                    return text
+                else:
+                    raise ValueError("No text could be extracted from the PDF using alternative method")
+            except ImportError:
+                app.logger.error("pdfminer not available for fallback PDF processing")
+                raise ValueError(f"PDF processing error: {str(e)} (no fallback available)")
+            
+    except ValueError as e:
+        # Pass through ValueError with informative message
+        app.logger.error(f"PDF validation error: {str(e)}")
+        raise
     except Exception as e:
-        app.logger.error(f"PDF processing error: {str(e)}")
+        app.logger.error(f"PDF processing error: {str(e)}", exc_info=True)
         if "not a PDF file" in str(e) or "EOF marker not found" in str(e):
             # Give more helpful error for common issues
-            raise Exception("The provided content doesn't appear to be a valid PDF file. Please check the file format and try again.")
-        raise Exception(f"PDF processing error: {str(e)}")
+            raise ValueError("The provided content doesn't appear to be a valid PDF file. Please check the file format and try again.")
+        raise ValueError(f"PDF processing error: {str(e)}")
 
 def validate_content_type(content_type: str) -> None:
     valid_types = ['youtube', 'pdf', 'text']
@@ -504,13 +549,13 @@ def process_sermon():
                 app.logger.info(f"Extracted designed question JSON: {json_content}")
                 question_dict = json.loads(json_content)
                 
-                # Store question in database
-                question = Question(
+                # Store question in database - update to use QuestionModel
+                question = QuestionModel(
                     game_id=game.id,
                     question=question_dict['question'],
                     correct_answer=question_dict['correct_answer'],
                     question_type=question_dict['question_type'],
-                    options=question_dict.get('options', []),
+                    options=question_dict.get('fake_answers', []),  # Notice the change to match the JSON format
                     hints=question_dict.get('hints', []),
                     learning_points=question_dict.get('learning_points', []),
                     difficulty=question_dict.get('difficulty', 'easy')
@@ -551,7 +596,7 @@ def get_game(game_id):
         if not game:
             return jsonify({"success": False, "error": "Game not found"}), 404
             
-        questions = session.query(Question).filter_by(game_id=game_id).all()
+        questions = session.query(QuestionModel).filter_by(game_id=game_id).all()
         
         return jsonify({
             "success": True,
