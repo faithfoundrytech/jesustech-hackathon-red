@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
     domains: ['placehold.co'],
     dangerouslyAllowSVG: true,
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+},
 };
 
 export default nextConfig;

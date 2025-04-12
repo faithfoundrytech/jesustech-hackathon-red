@@ -1,0 +1,175 @@
+Prompt for AI Question Generator:
+
+Context & Objective:
+You're tasked with generating interactive questions for the "Play the Word" game. Your generated questions should be based on sermon content and should vary in type to ensure a dynamic user experience. Avoid generating the same question type consecutively and aim to cover a range of formats. The question types include both traditional multiple-choice formats and new interactive draggable question types.
+
+Question Schema Overview:
+
+Single-Answer Multiple Choice:
+
+Schema:
+
+typescript
+Copy
+{
+  id: string,
+  type: 'single-answer-multiple-choice',
+  question: string,
+  correctAnswer: string,
+  fakeAnswers: string[],
+  points: number,
+  difficulty?: 'easy' | 'medium' | 'hard',
+  explanation?: string,
+  order: number,
+}
+Use: Ask questions like "Which verse states 'For God so loved the world'?"
+
+Multiple-Answer Multiple Choice:
+
+Schema:
+
+typescript
+Copy
+{
+  id: string,
+  type: 'multiple-answer-multiple-choice',
+  question: string,
+  correctAnswer: string[],
+  fakeAnswers: string[],
+  points: number,
+  difficulty?: 'easy' | 'medium' | 'hard',
+  explanation?: string,
+  order: number,
+}
+Use: Ask questions where several answers must be selected, such as identifying all "Fruits of the Spirit."
+
+Slider Question:
+
+Schema:
+
+typescript
+Copy
+{
+  id: string,
+  type: 'slider',
+  question: string,
+  correctAnswer: number,  // expected numeric value with some tolerance
+  fakeAnswers: string[],
+  points: number,
+  difficulty?: 'easy' | 'medium' | 'hard',
+  explanation?: string,
+  order: number,
+}
+Use: For numeric answers like "How many disciples did Jesus have?"
+
+Single-Match Draggable:
+
+Schema:
+
+typescript
+Copy
+interface SingleMatchDraggableAnswer {
+  type: 'single-match-draggable';
+  draggableItem: string;   // e.g., a Bible verse
+  options: string[];       // list of possible theme labels
+  correctOption: string;   // the correct theme for the verse
+}
+Use: Generate questions where a single verse must be dragged to the correct theme label.
+
+Multiple-Match Draggable:
+
+Schema:
+
+typescript
+Copy
+interface MultipleMatchDraggableAnswer {
+  type: 'multiple-match-draggable';
+  draggableItems: string[];                // list of verses
+  dropZones: string[];                     // list of theme labels
+  correctMapping: { [draggableItem: string]: string };  // mapping of each verse to its correct theme
+}
+Use: Generate questions where multiple verses are matched to corresponding themes.
+
+Multiple-Match True/False Draggable:
+
+Schema:
+
+typescript
+Copy
+interface MultipleMatchTrueFalseDraggableAnswer {
+  type: 'multiple-match-true-false-draggable';
+  statements: string[];  // List of statements to classify.
+  correctMapping: { [statement: string]: boolean }; // true for correct, false for incorrect.
+}
+Use: Generate questions that ask users to drag statements into "Correct" or "False" zones based on their content.
+
+Fill-in-the-Blanks Draggable:
+
+Schema:
+
+typescript
+Copy
+interface FillInTheBlanksDraggableAnswer {
+  type: 'fill-in-the-blanks-draggable';
+  sentenceTemplate: string;  // e.g., "For God so loved the {blank1} that He gave His {blank2}..."
+  blanks: Array<{ id: string; correctOption: string }>;
+  options: string[];         // Pool of options to drag into the blanks.
+}
+Use: Generate questions where a sentence with missing words requires users to drag options into the blanks.
+
+Instructions:
+
+Variety Rule:
+
+Ensure that no two questions of the same type appear in succession. Rotate among different types (e.g., if the previous question was a slider, choose a draggable or multiple-choice type next).
+
+Context-Aware Generation:
+
+Use the provided sermon content as a base to generate the questions. Extract key verses, themes, numeric facts, and statements to incorporate into your questions.
+
+For example, extract a verse and its associated theme, or key numbers mentioned in the sermon.
+
+Difficulty & Points:
+
+Adjust the points and difficulty based on the content. More challenging questions (e.g., match multiple verses or fill in multiple blanks) should carry a higher point value.
+
+Unique Schema Data:
+
+For draggable types, ensure that the list of options includes a mix of correct and plausible incorrect options.
+
+For fill-in-the-blanks, clearly define the placeholders (e.g., {blank1}, {blank2}) and their corresponding correct answers.
+
+Feedback & Explanation:
+
+Include an explanation field in every generated question that elaborates on why the correct answer is right, using the context of the sermon.
+
+Example Generation:
+
+If the sermon mentions "For God so loved the world" along with key themes like "Salvation" and "Grace," generate a single-match-draggable question:
+
+draggableItem: "For God so loved the world"
+
+options: ["Salvation", "Grace", "Courage", "Wisdom"]
+
+correctOption: "Salvation"
+
+If multiple verses are mentioned along with various themes, generate a multiple-match-draggable question with a mapping of each verse to its corresponding theme.
+
+For a section that includes statements related to the sermon, create a multiple-match true/false draggable question and ensure the UI allows the user to drag each statement into the appropriate classification.
+
+For a part of the sermon that contains a well-known sentence with missing words, generate a fill-in-the-blanks draggable question. Provide a sentence template with placeholders, a set of draggable options, and define the correct answer for each blank.
+
+Final Deliverable:
+
+A set of questions that cover a broad range of these types.
+
+Each question should strictly follow the defined schema.
+
+Ensure there is a mix so that the same question type does not get repeated consecutively.
+
+Validate that all data (correct answers, options, mappings) is generated in a format that our play page UI can easily consume.
+
+Reference:
+Our updated question model in Question.ts (refer to the structure added in the previous implementation) should be used as a guide.
+
+Note: Keep the tone engaging and the questions reflective of both the sermon content and the interactive design of the "Play the Word" experience.

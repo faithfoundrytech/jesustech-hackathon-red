@@ -3,52 +3,41 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Sun, Moon } from "lucide-react";
+import { useTheme } from "next-themes";
 
 export default function ThemeSwitcher() {
-  // Initialize to user preference or system preference, defaulting to 'light'
-  const [theme, setTheme] = useState("light");
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
-  // On first mount, get the current theme
+  // Wait for component to mount to avoid hydration mismatch
   useEffect(() => {
-    // Check local storage first
-    const savedTheme = localStorage.getItem("theme");
-    
-    // If theme was saved in localStorage, use that
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.classList.toggle("dark", savedTheme === "dark");
-    } 
-    // Otherwise check system preference
-    else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setTheme("dark");
-      document.documentElement.classList.add("dark");
-    }
+    setMounted(true);
   }, []);
 
+  if (!mounted) {
+    return null;
+  }
+
   const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
-    
-    // Update the HTML class for Tailwind dark mode
-    document.documentElement.classList.toggle("dark");
-    
-    // Save preference to localStorage
-    localStorage.setItem("theme", newTheme);
+    setTheme(theme === "dark" ? "light" : "dark");
   };
 
   return (
     <motion.button
-      whileTap={{ scale: 0.9 }}
-      whileHover={{ scale: 1.1 }}
+      whileTap={{ scale: 0.95 }}
+      whileHover={{ scale: 1.05 }}
       onClick={toggleTheme}
-      className="p-2 rounded-full bg-baby-blue/30 dark:bg-soft-indigo/30 text-deep-navy dark:text-light-lavender"
-      aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+      className="bg-accent p-2 rounded-full text-foreground"
+      aria-label="Toggle theme"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
     >
-      {theme === "light" ? (
-        <Moon size={18} className="text-deep-navy" />
+      {theme === "dark" ? (
+        <Sun size={20} className="text-foreground" />
       ) : (
-        <Sun size={18} className="text-light-lavender" />
+        <Moon size={20} className="text-foreground" />
       )}
     </motion.button>
   );
-}
+} 
