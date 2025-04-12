@@ -1,8 +1,8 @@
 import { logger, task } from "@trigger.dev/sdk/v3";
 import mongoose from 'mongoose';
-import Game from '../../models/Game';
-import dbConnect from '../../lib/dbConnect';
-import { generateQuestions, saveGeneratedQuestions } from '../../lib/openai';
+import Game from '@/models/Game';
+import dbConnect from '@/lib/dbConnect';
+import { generateQuestions, saveGeneratedQuestions } from '@/lib/openai';
 
 interface CreateQuestionsPayload {
   gameId: string;
