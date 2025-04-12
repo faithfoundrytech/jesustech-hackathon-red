@@ -92,12 +92,12 @@ def call_openrouter(prompt: str, model: str = "google/gemini-2.0-flash-001") -> 
     
     try:
         app.logger.debug(f"Calling OpenRouter API with model: {model}")
-        # Add timeout parameter to prevent hanging requests
+        # Increase timeout parameter to prevent early timeouts
         response = requests.post(
             f"{OPENROUTER_BASE_URL}/chat/completions",
             headers=headers,
             json=data,
-            timeout=30  # Set a 30 second timeout
+            timeout=120  # Increase timeout to 120 seconds
         )
         
         # Log API response status for debugging
