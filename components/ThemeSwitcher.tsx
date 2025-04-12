@@ -14,6 +14,10 @@ export default function ThemeSwitcher() {
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    setTheme("dark");
+  }, [mounted]);
+
   if (!mounted) {
     return null;
   }
