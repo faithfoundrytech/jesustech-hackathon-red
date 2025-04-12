@@ -283,7 +283,7 @@ const formatCorrectAnswer = (questionType: QuestionType, correctAnswer: any): st
   }
 };
 
-export default function PlayGame({ params }: { params: { gameId: string } }) {
+export default function PlayGame({ params }: { params: any }) {
   const router = useRouter();
   const { gameId } = params;
   

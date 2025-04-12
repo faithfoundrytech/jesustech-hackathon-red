@@ -50,7 +50,7 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-export default function ResultsPage({ params }: { params: { userGameId: string } }) {
+export default function ResultsPage({ params }: { params: any }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const gameId = searchParams.get('gameId');
