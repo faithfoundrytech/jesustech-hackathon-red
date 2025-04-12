@@ -33,7 +33,7 @@ export default function MenuBar() {
           <div className="hidden md:flex md:items-center md:space-x-8">
             <NavLink href="/home">Dashboard</NavLink>
             <NavLink href="/churches/manage">Manage Church</NavLink>
-            <NavLink href="/rewards">Rewards</NavLink>
+            <NavLink href="/leaderboard">Ranking</NavLink>
           </div>
 
           {/* Actions */}
@@ -68,7 +68,7 @@ export default function MenuBar() {
           <div className="px-4 pb-4 space-y-4">
             <MobileNavLink href="/home" onClick={() => setIsMenuOpen(false)}>Dashboard</MobileNavLink>
             <MobileNavLink href="/churches/manage" onClick={() => setIsMenuOpen(false)}>Manage Church</MobileNavLink>
-            <MobileNavLink href="/rewards" onClick={() => setIsMenuOpen(false)}>Rewards</MobileNavLink>
+            <MobileNavLink href="/leaderboard" onClick={() => setIsMenuOpen(false)}>Ranking</MobileNavLink>
             
             <UserButton />
           </div>

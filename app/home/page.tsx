@@ -138,7 +138,8 @@ export default function HomePage() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              <div className="bg-white/20 backdrop-blur-sm px-4 py-3 rounded-2xl">
+              <div className="bg-white/20 backdrop-blur-sm px-4 py-3 rounded-2xl cursor-pointer hover:bg-white/30 transition-colors" 
+                onClick={() => router.push('/leaderboard')}>
                 <p className="text-white/80 text-sm font-medium mb-1">Total Points</p>
                 <div className="flex items-center">
                   <Trophy className="w-5 h-5 text-lemon-yellow mr-2" />
