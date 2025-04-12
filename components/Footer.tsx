@@ -21,36 +21,37 @@ export default function Footer() {
         {/* Partners section */}
 
         <div className="mb-12 pb-12 border-b border-indigo-800/30">
-  <h4 className="text-center font-poppins font-semibold text-indigo-100 mb-8">
-    Trusted by Churches and Organizations
-  </h4>
-  <div className="flex flex-wrap justify-center gap-8">
-    {[
-      '/onehope.png',
-      '/citan.png', 
-      '/lifeabundance.png', 
-      '/partner4.png', 
-      '/partner5.png', 
-    ].map((logo, index) => (
-      <motion.div
-        key={index}
-        initial={{ opacity: 0, y: 10 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ delay: index * 0.1 }}
-        whileHover={{ scale: 1.05 }}
-      >
-        <Image
-          src={logo}
-          alt={`Partner logo ${index + 1}`}
-          width={250}
-          height={120}
-          className="h-12 w-auto opacity-70 hover:opacity-100 transition-opacity"
-        />
-      </motion.div>
-    ))}
-  </div>
-</div>
+            <h4 className="text-center font-poppins font-semibold text-indigo-100 text-3xl mb-8">
+              Trusted by Churches and Organizations
+            </h4>
+            <div className="flex flex-wrap justify-center gap-8">
+              {[
+                '/onehope.png', 
+                '/lifeabundance.png', 
+                '/alx.jpeg', 
+                '/gc.avif',
+                '/ihub.avif', 
+              ].map((logo, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 10 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  whileHover={{ scale: 1.05 }}
+                >
+                  <Image
+                    src={logo}
+                    alt={`Partner logo ${index + 1}`}
+                    width={300}
+                    height={180}
+                    className="h-12 w-auto opacity-70 hover:opacity-100 transition-opacity"
+                  />
+                </motion.div>
+              ))}
+            </div>
+          </div>
+
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
           <div className="flex flex-col">
