@@ -7,19 +7,61 @@ import { Award, Check, X, ChevronRight, HelpCircle, ArrowLeft, Star, Sparkles } 
 import { Card } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
+import {
+  DndContext,
+  closestCenter, 
+  useSensor,
+  useSensors,
+  PointerSensor,
+  useDraggable,
+  useDroppable,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 
 // Types for our question data
-type QuestionType = 'single-answer-multiple-choice' | 'multiple-answer-multiple-choice' | 'slider' | 'single-answer-drag-drop' | 'multiple-answer-drag-drop' | 'true-false';
+type QuestionType = 'single-answer-multiple-choice' | 'multiple-answer-multiple-choice' | 'slider' | 'single-answer-drag-drop' | 'multiple-answer-drag-drop' | 'true-false' | 'single-match-draggable' | 'multiple-match-draggable' | 'multiple-match-true-false-draggable' | 'fill-in-the-blanks-draggable';
 
 interface VerseBookMapping {
   [verse: string]: string;
+}
+
+// New interfaces for the draggable question types
+interface SingleMatchDraggableAnswer {
+  type: 'single-match-draggable';
+  draggableItem: string;
+  options: string[];
+  correctOption: string;
+}
+
+interface MultipleMatchDraggableAnswer {
+  type: 'multiple-match-draggable';
+  draggableItems: string[];
+  dropZones: string[];
+  correctMapping: { [draggableItem: string]: string };
+}
+
+interface MultipleMatchTrueFalseDraggableAnswer {
+  type: 'multiple-match-true-false-draggable';
+  statements: string[];
+  correctMapping: { [statement: string]: boolean };
+}
+
+interface FillInTheBlanksDraggableAnswer {
+  type: 'fill-in-the-blanks-draggable';
+  sentenceTemplate: string;
+  blanks: Array<{
+    id: string;
+    correctOption: string;
+  }>;
+  options: string[];
 }
 
 type Question = {
   id: string;
   type: QuestionType;
   question: string;
-  correctAnswer: string | string[] | number | VerseBookMapping;
+  correctAnswer: string | string[] | number | VerseBookMapping | SingleMatchDraggableAnswer | MultipleMatchDraggableAnswer | MultipleMatchTrueFalseDraggableAnswer | FillInTheBlanksDraggableAnswer;
   fakeAnswers: string[];
   points: number;
   difficulty?: 'easy' | 'medium' | 'hard';
@@ -38,7 +80,7 @@ type Game = {
 
 type UserAnswer = {
   questionId: string;
-  userAnswer: string | string[] | number | VerseBookMapping;
+  userAnswer: string | string[] | number | Record<string, string> | any;
   correct: boolean;
   pointsEarned: number;
 };
@@ -53,79 +95,6 @@ type UserGame = {
   completedAt?: Date;
   timeSpentSeconds?: number;
 };
-
-// Dummy data for the game
-const dummyGame: Game = {
-  id: 'game123',
-  title: 'Faith Foundations Challenge',
-  description: 'Test your knowledge on the foundations of faith',
-  pointsAvailable: 200,
-  questionsCount: 5,
-  churchName: 'Grace Community Church'
-};
-
-// Dummy data for questions
-const dummyQuestions: Question[] = [
-  {
-    id: 'q1',
-    type: 'single-answer-multiple-choice',
-    question: 'Which verse states "For God so loved the world"?',
-    correctAnswer: 'John 3:16',
-    fakeAnswers: ['Matthew 5:1', 'Romans 8:28', 'Genesis 1:1'],
-    points: 10,
-    difficulty: 'easy',
-    explanation: 'John 3:16 is one of the most well-known verses in the Bible, often called "the Gospel in a nutshell".',
-    order: 1
-  },
-  {
-    id: 'q2',
-    type: 'multiple-answer-multiple-choice',
-    question: 'Which of the following are Fruits of the Spirit mentioned in Galatians 5:22-23?',
-    correctAnswer: ['Love', 'Joy', 'Peace', 'Patience'],
-    fakeAnswers: ['Pride', 'Anger', 'Wealth', 'Success'],
-    points: 20,
-    difficulty: 'medium',
-    explanation: 'The Fruits of the Spirit are love, joy, peace, patience, kindness, goodness, faithfulness, gentleness, and self-control.',
-    order: 2
-  },
-  {
-    id: 'q3',
-    type: 'slider',
-    question: 'How many disciples did Jesus have?',
-    correctAnswer: 12,
-    fakeAnswers: [],
-    points: 15,
-    difficulty: 'easy',
-    explanation: 'Jesus had 12 disciples who followed him closely and became his apostles.',
-    order: 3
-  },
-  {
-    id: 'q4',
-    type: 'single-answer-drag-drop',
-    question: 'Match the verse with the correct book of the Bible:',
-    correctAnswer: {
-      'In the beginning God created the heavens and the earth': 'Genesis',
-      'The Lord is my shepherd; I shall not want': 'Psalms',
-      'For God so loved the world': 'John'
-    } as VerseBookMapping,
-    fakeAnswers: ['Matthew', 'Luke', 'Revelation', 'Exodus'],
-    points: 30,
-    difficulty: 'hard',
-    explanation: 'These are some of the most well-known verses from their respective books.',
-    order: 4
-  },
-  {
-    id: 'q5',
-    type: 'true-false',
-    question: 'Moses led the Israelites across the Red Sea.',
-    correctAnswer: 'True',
-    fakeAnswers: ['False'],
-    points: 10,
-    difficulty: 'easy',
-    explanation: 'Moses did lead the Israelites across the Red Sea as recorded in the book of Exodus.',
-    order: 5
-  }
-];
 
 // Initialize an empty UserGame
 const initUserGame = (gameId: string): UserGame => ({
@@ -170,108 +139,148 @@ const PointCelebration = ({ points }: { points: number }) => {
   );
 };
 
-// Custom draggable component that doesn't rely on react-draggable
+// Draggable component using dnd-kit
 const DraggableItem = ({ 
-  children, 
-  onDragEnd
+  id, 
+  index,
+  disabled = false,
+  children
 }: { 
-  children: React.ReactNode, 
-  onDragEnd: (x: number, y: number) => void 
+  id: string;
+  index: number;
+  disabled?: boolean;
+  children: React.ReactNode;
 }) => {
-  const itemRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const startPos = useRef({ x: 0, y: 0, mouseX: 0, mouseY: 0 });
+  const {attributes, listeners, setNodeRef, transform} = useDraggable({
+    id,
+    disabled
+  });
   
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (!itemRef.current) return;
-    
-    setIsDragging(true);
-    startPos.current = {
-      x: position.x,
-      y: position.y,
-      mouseX: e.clientX,
-      mouseY: e.clientY
-    };
-    
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    e.preventDefault();
-  };
-  
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isDragging) return;
-    
-    const dx = e.clientX - startPos.current.mouseX;
-    const dy = e.clientY - startPos.current.mouseY;
-    
-    setPosition({
-      x: startPos.current.x + dx,
-      y: startPos.current.y + dy
-    });
-  };
-  
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
-    
-    onDragEnd(position.x, position.y);
-  };
-  
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (!itemRef.current || e.touches.length !== 1) return;
-    
-    setIsDragging(true);
-    startPos.current = {
-      x: position.x,
-      y: position.y,
-      mouseX: e.touches[0].clientX,
-      mouseY: e.touches[0].clientY
-    };
-    
-    document.addEventListener('touchmove', handleTouchMove, { passive: false });
-    document.addEventListener('touchend', handleTouchEnd);
-    e.preventDefault();
-  };
-  
-  const handleTouchMove = (e: TouchEvent) => {
-    if (!isDragging || e.touches.length !== 1) return;
-    
-    const dx = e.touches[0].clientX - startPos.current.mouseX;
-    const dy = e.touches[0].clientY - startPos.current.mouseY;
-    
-    setPosition({
-      x: startPos.current.x + dx,
-      y: startPos.current.y + dy
-    });
-    
-    e.preventDefault();
-  };
-  
-  const handleTouchEnd = () => {
-    setIsDragging(false);
-    document.removeEventListener('touchmove', handleTouchMove);
-    document.removeEventListener('touchend', handleTouchEnd);
-    
-    onDragEnd(position.x, position.y);
+  const style = transform ? {
+    transform: CSS.Translate.toString(transform),
+    zIndex: 10,
+    touchAction: 'none',
+  } : {
+    touchAction: 'none',
   };
   
   return (
-    <div
-      ref={itemRef}
-      className={`absolute cursor-grab ${isDragging ? 'cursor-grabbing z-50 opacity-90' : ''}`}
-      style={{
-        transform: `translate(${position.x}px, ${position.y}px)`,
-        transition: isDragging ? 'none' : 'transform 0.2s ease-out',
-        touchAction: 'none'
+    <motion.div
+      ref={setNodeRef}
+      style={style}
+      className="p-3 rounded-xl bg-lemon-yellow/20 text-foreground font-medium text-center cursor-grab touch-none"
+      whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ 
+        opacity: 1, 
+        y: 0,
+        transition: { delay: 0.3 + index * 0.1 } 
       }}
-      onMouseDown={handleMouseDown}
-      onTouchStart={handleTouchStart}
+      {...listeners}
+      {...attributes}
     >
       {children}
-    </div>
+    </motion.div>
   );
+};
+
+// Droppable component using dnd-kit
+const DroppableArea = ({
+  id,
+  isActive,
+  verse,
+  matchedOption,
+  index,
+}: {
+  id: string;
+  isActive: boolean;
+  verse: string;
+  matchedOption: string | null;
+  index: number;
+}) => {
+  const {isOver, setNodeRef} = useDroppable({
+    id
+  });
+  
+  return (
+    <motion.div 
+      ref={setNodeRef}
+      className={`p-4 rounded-xl border-2 transition-all ${
+        matchedOption ? 'border-primary bg-primary/10' : 
+        isOver ? 'border-primary/70 bg-primary/5' : 'border-border bg-background'
+      }`}
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ 
+        opacity: 1, 
+        x: 0,
+        transition: { delay: index * 0.1 } 
+      }}
+    >
+      <div className="flex justify-between items-center">
+        <p className="text-foreground">{verse}</p>
+        {matchedOption && (
+          <motion.div 
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-primary/20 px-3 py-1 rounded-lg text-primary font-medium"
+          >
+            {matchedOption}
+          </motion.div>
+        )}
+      </div>
+    </motion.div>
+  );
+};
+
+// Helper function to format correct answers for display
+const formatCorrectAnswer = (questionType: QuestionType, correctAnswer: any): string => {
+  switch (questionType) {
+    case 'single-answer-multiple-choice':
+    case 'true-false':
+      return String(correctAnswer);
+      
+    case 'multiple-answer-multiple-choice':
+      return Array.isArray(correctAnswer) 
+        ? correctAnswer.join(', ')
+        : String(correctAnswer);
+        
+    case 'slider':
+      return String(correctAnswer);
+      
+    case 'single-answer-drag-drop':
+    case 'multiple-answer-drag-drop':
+      if (typeof correctAnswer === 'object' && !Array.isArray(correctAnswer)) {
+        return Object.entries(correctAnswer)
+          .map(([key, value]) => `"${key}" → ${value}`)
+          .join('\n');
+      }
+      return String(correctAnswer);
+
+    case 'single-match-draggable':
+      const singleMatch = correctAnswer as SingleMatchDraggableAnswer;
+      return `"${singleMatch.draggableItem}" should be matched with "${singleMatch.correctOption}"`;
+      
+    case 'multiple-match-draggable':
+      const multipleMatch = correctAnswer as MultipleMatchDraggableAnswer;
+      return Object.entries(multipleMatch.correctMapping)
+        .map(([item, zone]) => `"${item}" → ${zone}`)
+        .join('\n');
+        
+    case 'multiple-match-true-false-draggable':
+      const trueFalse = correctAnswer as MultipleMatchTrueFalseDraggableAnswer;
+      return Object.entries(trueFalse.correctMapping)
+        .map(([statement, isTrue]) => `"${statement}" is ${isTrue ? 'True' : 'False'}`)
+        .join('\n');
+        
+    case 'fill-in-the-blanks-draggable':
+      const fillBlanks = correctAnswer as FillInTheBlanksDraggableAnswer;
+      return fillBlanks.blanks
+        .map(blank => `${blank.id}: "${blank.correctOption}"`)
+        .join('\n');
+        
+    default:
+      return String(correctAnswer);
+  }
 };
 
 export default function PlayGame({ params }: { params: { gameId: string } }) {
@@ -279,9 +288,10 @@ export default function PlayGame({ params }: { params: { gameId: string } }) {
   const { gameId } = params;
   
   // Game state
-  const [game, setGame] = useState<Game>(dummyGame);
-  const [questions, setQuestions] = useState<Question[]>(dummyQuestions);
+  const [game, setGame] = useState<Game | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [userGame, setUserGame] = useState<UserGame>(initUserGame(gameId));
+  const [isLoading, setIsLoading] = useState(true);
   
   // UI state
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -295,27 +305,57 @@ export default function PlayGame({ params }: { params: { gameId: string } }) {
   const [showPointCelebration, setShowPointCelebration] = useState(false);
   const [earnedPoints, setEarnedPoints] = useState(0);
   
-  // References for drop zones
-  const dropZonesRef = useRef<{[key: string]: DOMRect | null}>({});
-  const verseContainerRef = useRef<HTMLDivElement>(null);
+  // New state for the new question types
+  const [singleMatchAnswer, setSingleMatchAnswer] = useState<string | null>(null);
+  const [multipleMatchAnswers, setMultipleMatchAnswers] = useState<{[item: string]: string | null}>({});
+  const [trueFalseAnswers, setTrueFalseAnswers] = useState<{[statement: string]: boolean | null}>({});
+  const [blankAnswers, setBlankAnswers] = useState<{[blankId: string]: string | null}>({});
   
   // Current question
   const currentQuestion = questions[currentQuestionIndex];
   
-  // Progress tracking
-  const progressPercentage = ((currentQuestionIndex + 1) / questions.length) * 100;
-  
-  // Check if question has been answered
-  const isQuestionAnswered = userGame.answers.some(
-    answer => answer.questionId === currentQuestion?.id
+  // Configure sensors for dnd-kit
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
   );
-
-  // User is at the end of questions
-  const isLastQuestion = currentQuestionIndex === questions.length - 1;
   
-  // Setup drag items
+  // Fetch game data
   useEffect(() => {
-    if (currentQuestion?.type.includes('drag-drop')) {
+    async function fetchGameData() {
+      try {
+        setIsLoading(true);
+        const response = await fetch(`/api/games/details?gameId=${gameId}`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch game data');
+        }
+        
+        const data = await response.json();
+        setGame(data.game);
+        setQuestions(data.questions);
+      } catch (error) {
+        console.error('Error fetching game data:', error);
+        toast.error('Failed to load game. Please try again.');
+      } finally {
+        // Slight delay to ensure loading screen shows properly
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 500);
+      }
+    }
+    
+    fetchGameData();
+  }, [gameId]);
+  
+  // Setup drag items - MOVED THIS USEEFFECT BEFORE THE CONDITIONAL RETURN
+  useEffect(() => {
+    if (!currentQuestion) return;
+    
+    if (currentQuestion.type.includes('drag-drop')) {
       const items: {[key: string]: string | null} = {};
       
       if (typeof currentQuestion.correctAnswer === 'object' && !Array.isArray(currentQuestion.correctAnswer)) {
@@ -326,42 +366,53 @@ export default function PlayGame({ params }: { params: { gameId: string } }) {
       
       setDragItems(items);
     }
-  }, [currentQuestion]);
-
-  // Update drop zone positions
-  const updateDropZones = () => {
-    if (!currentQuestion?.type.includes('drag-drop') || !verseContainerRef.current) return;
     
-    const newDropZones: {[key: string]: DOMRect | null} = {};
-    
-    if (typeof currentQuestion.correctAnswer === 'object' && !Array.isArray(currentQuestion.correctAnswer)) {
-      Object.keys(currentQuestion.correctAnswer as VerseBookMapping).forEach(key => {
-        const el = document.getElementById(`dropzone-${key}`);
-        if (el) {
-          newDropZones[key] = el.getBoundingClientRect();
-        } else {
-          newDropZones[key] = null;
-        }
+    // Initialize state for new question types
+    if (currentQuestion.type === 'single-match-draggable') {
+      setSingleMatchAnswer(null);
+    } else if (currentQuestion.type === 'multiple-match-draggable') {
+      const answer = currentQuestion.correctAnswer as MultipleMatchDraggableAnswer;
+      const newMatchAnswers: {[item: string]: string | null} = {};
+      answer.draggableItems.forEach(item => {
+        newMatchAnswers[item] = null;
       });
+      setMultipleMatchAnswers(newMatchAnswers);
+    } else if (currentQuestion.type === 'multiple-match-true-false-draggable') {
+      const answer = currentQuestion.correctAnswer as MultipleMatchTrueFalseDraggableAnswer;
+      const newTrueFalseAnswers: {[statement: string]: boolean | null} = {};
+      answer.statements.forEach(statement => {
+        newTrueFalseAnswers[statement] = null;
+      });
+      setTrueFalseAnswers(newTrueFalseAnswers);
+    } else if (currentQuestion.type === 'fill-in-the-blanks-draggable') {
+      const answer = currentQuestion.correctAnswer as FillInTheBlanksDraggableAnswer;
+      const newBlankAnswers: {[blankId: string]: string | null} = {};
+      answer.blanks.forEach(blank => {
+        newBlankAnswers[blank.id] = null;
+      });
+      setBlankAnswers(newBlankAnswers);
     }
-    
-    dropZonesRef.current = newDropZones;
-  };
-  
-  useEffect(() => {
-    updateDropZones();
-    window.addEventListener('resize', updateDropZones);
-    
-    return () => {
-      window.removeEventListener('resize', updateDropZones);
-    };
   }, [currentQuestion]);
+  
+  // Progress tracking
+  const progressPercentage = questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
+  
+  // Check if question has been answered
+  const isQuestionAnswered = userGame.answers.some(
+    answer => answer.questionId === currentQuestion?.id
+  );
 
+  // User is at the end of questions
+  const isLastQuestion = currentQuestionIndex === questions.length - 1;
+
+  // If loading or no data, return null (loading component will be shown automatically)
+  if (isLoading || !game || !currentQuestion) return null;
+  
   // Process and validate user's answer
   const handleSubmitAnswer = () => {
     if (!currentQuestion) return;
     
-    let answer: string | string[] | number | VerseBookMapping;
+    let answer: string | string[] | number | VerseBookMapping | any;
     let correct = false;
     let pointsEarned = 0;
     
@@ -400,6 +451,42 @@ export default function PlayGame({ params }: { params: { gameId: string } }) {
             ([key, value]) => value === correctMapping[key]
           );
         }
+        break;
+        
+      case 'single-match-draggable':
+        answer = singleMatchAnswer;
+        const singleMatchCorrectAnswer = currentQuestion.correctAnswer as SingleMatchDraggableAnswer;
+        correct = answer === singleMatchCorrectAnswer.correctOption;
+        break;
+        
+      case 'multiple-match-draggable':
+        answer = {...multipleMatchAnswers};
+        const multipleMatchCorrectAnswer = currentQuestion.correctAnswer as MultipleMatchDraggableAnswer;
+        
+        // Check if all mappings are correct
+        correct = Object.entries(multipleMatchAnswers).every(
+          ([item, zone]) => zone === multipleMatchCorrectAnswer.correctMapping[item]
+        );
+        break;
+        
+      case 'multiple-match-true-false-draggable':
+        answer = {...trueFalseAnswers};
+        const trueFalseCorrectAnswer = currentQuestion.correctAnswer as MultipleMatchTrueFalseDraggableAnswer;
+        
+        // Check if all statements are correctly classified
+        correct = Object.entries(trueFalseAnswers).every(
+          ([statement, isTrue]) => isTrue === trueFalseCorrectAnswer.correctMapping[statement]
+        );
+        break;
+        
+      case 'fill-in-the-blanks-draggable':
+        answer = {...blankAnswers};
+        const fillBlanksCorrectAnswer = currentQuestion.correctAnswer as FillInTheBlanksDraggableAnswer;
+        
+        // Check if all blanks have the correct words
+        correct = fillBlanksCorrectAnswer.blanks.every(
+          blank => blankAnswers[blank.id] === blank.correctOption
+        );
         break;
         
       default:
@@ -468,47 +555,82 @@ export default function PlayGame({ params }: { params: { gameId: string } }) {
     }
   };
   
-  // Handle drag end for custom draggable items
-  const handleDragEnd = (option: string, x: number, y: number) => {
-    // Get the current item position relative to the viewport
-    const itemEl = document.getElementById(`drag-item-${option}`);
-    if (!itemEl) return;
+  // Handle drag end for dnd-kit
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
     
-    const itemRect = itemEl.getBoundingClientRect();
-    const itemCenterX = itemRect.left + x + itemRect.width / 2;
-    const itemCenterY = itemRect.top + y + itemRect.height / 2;
-    
-    // Check if it's over any drop zone
-    let dropped = false;
-    
-    Object.entries(dropZonesRef.current).forEach(([key, rect]) => {
-      if (!rect) return;
-      
-      // Check if it's inside the drop zone
-      if (
-        itemCenterX >= rect.left && 
-        itemCenterX <= rect.right && 
-        itemCenterY >= rect.top && 
-        itemCenterY <= rect.bottom
-      ) {
-        // Drop to this zone
+    if (over) {
+      if (currentQuestion?.type.includes('drag-drop')) {
+        // Extract the verse from the dropzone ID
+        const verse = over.id.toString().replace('dropzone-', '');
+        
+        // Extract the option from the draggable ID
+        const option = active.id.toString().replace('draggable-', '');
+        
+        // Update dragItems state
         setDragItems(prev => ({
           ...prev,
-          [key]: option
+          [verse]: option
         }));
+      } else if (currentQuestion?.type === 'single-match-draggable') {
+        // Extract the option from the dropzone ID
+        const option = over.id.toString().replace('dropzone-', '');
         
-        dropped = true;
+        // Set the single match answer
+        setSingleMatchAnswer(option);
+      } else if (currentQuestion?.type === 'multiple-match-draggable') {
+        // Extract the item from the draggable ID
+        const item = active.id.toString().replace('draggable-', '');
         
-        // Add a small animation feedback
-        const el = document.getElementById(`dropzone-${key}`);
-        if (el) {
-          el.classList.add('drop-highlight');
-          setTimeout(() => {
-            el.classList.remove('drop-highlight');
-          }, 300);
-        }
+        // Extract the zone from the dropzone ID
+        const zone = over.id.toString().replace('dropzone-', '');
+        
+        // Update multipleMatchAnswers state
+        setMultipleMatchAnswers(prev => ({
+          ...prev,
+          [item]: zone
+        }));
+      } else if (currentQuestion?.type === 'multiple-match-true-false-draggable') {
+        // Extract the statement from the draggable ID
+        const statement = active.id.toString().replace('draggable-', '');
+        
+        // Extract whether it's true or false from the dropzone ID
+        const isTrueZone = over.id.toString().includes('true');
+        
+        // Update trueFalseAnswers state
+        setTrueFalseAnswers(prev => ({
+          ...prev,
+          [statement]: isTrueZone
+        }));
+      } else if (currentQuestion?.type === 'fill-in-the-blanks-draggable') {
+        // Extract the word from the draggable ID
+        const word = active.id.toString().replace('draggable-', '');
+        
+        // Extract the blank ID from the dropzone ID
+        const blankId = over.id.toString().replace('dropzone-', '');
+        
+        // Update blankAnswers state
+        setBlankAnswers(prev => ({
+          ...prev,
+          [blankId]: word
+        }));
       }
-    });
+      
+      // Show visual feedback with toast
+      toast.success(
+        <div className="flex items-center">
+          <div className="mr-2">
+            <Check className="h-5 w-5 text-soft-mint" />
+          </div>
+          <span>Matched!</span>
+        </div>,
+        {
+          position: "bottom-center",
+          duration: 1000,
+          className: "bg-gradient-to-r from-primary/10 to-soft-mint/10"
+        }
+      );
+    }
   };
   
   // Move to next question or finish game
@@ -520,6 +642,10 @@ export default function PlayGame({ params }: { params: { gameId: string } }) {
     setSelectedAnswers([]);
     setSliderValue(0);
     setDragItems({});
+    setSingleMatchAnswer(null);
+    setMultipleMatchAnswers({});
+    setTrueFalseAnswers({});
+    setBlankAnswers({});
     
     if (isLastQuestion) {
       // Complete the game
@@ -532,18 +658,70 @@ export default function PlayGame({ params }: { params: { gameId: string } }) {
       
       setUserGame(completedUserGame);
       
-      // Navigate to results page
-      toast.success("Game completed! Viewing your results...", {
-        position: "top-center",
-        duration: 2000,
-      });
-      
-      setTimeout(() => {
-        router.push(`/results?gameId=${gameId}`);
-      }, 500);
+      // Submit the game results to the API
+      submitGameResults(completedUserGame);
     } else {
       // Move to next question
       setCurrentQuestionIndex(currentQuestionIndex + 1);
+    }
+  };
+  
+  // Submit game results to API
+  const submitGameResults = async (completedGame: UserGame) => {
+    try {
+      // Show loading toast
+      toast.loading("Submitting your results...", {
+        id: "submit-results",
+      });
+      
+      // Format the answers data for the API
+      const formattedAnswers = completedGame.answers.map(answer => ({
+        questionId: answer.questionId,
+        userAnswer: answer.userAnswer,
+      }));
+      
+      // Make API request
+      const response = await fetch('/api/games/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          gameId,
+          answers: formattedAnswers,
+          timeSpentSeconds: completedGame.timeSpentSeconds
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to submit game results');
+      }
+      
+      const data = await response.json();
+      
+      // Success toast
+      toast.success("Game completed! Viewing your results...", {
+        id: "submit-results",
+        duration: 2000,
+      });
+      
+      // Navigate to results page
+      setTimeout(() => {
+        router.push(`/results/${data.userGameId || 'latest'}?gameId=${gameId}`);
+      }, 500);
+    } catch (error) {
+      console.error('Error submitting game results:', error);
+      
+      // Error toast
+      toast.error("Couldn't save your results. Try again later.", {
+        id: "submit-results",
+        duration: 3000,
+      });
+      
+      // Navigate to home after error
+      setTimeout(() => {
+        router.push('/home');
+      }, 2000);
     }
   };
   
@@ -556,6 +734,32 @@ export default function PlayGame({ params }: { params: { gameId: string } }) {
         return [...prev, option];
       }
     });
+  };
+  
+  // Add handlers to remove dragged items
+  const handleRemoveSingleMatch = () => {
+    setSingleMatchAnswer(null);
+  };
+
+  const handleRemoveMultipleMatchItem = (item: string) => {
+    setMultipleMatchAnswers(prev => ({
+      ...prev,
+      [item]: null
+    }));
+  };
+
+  const handleRemoveTrueFalseItem = (statement: string) => {
+    setTrueFalseAnswers(prev => ({
+      ...prev,
+      [statement]: null
+    }));
+  };
+
+  const handleRemoveBlankWord = (blankId: string) => {
+    setBlankAnswers(prev => ({
+      ...prev,
+      [blankId]: null
+    }));
   };
   
   // Render question based on its type
@@ -703,71 +907,51 @@ export default function PlayGame({ params }: { params: { gameId: string } }) {
         ].filter((v, i, a) => a.indexOf(v) === i).sort();
         
         return (
-          <div className="space-y-6">
-            <h2 className="text-xl md:text-2xl font-fredoka text-foreground mb-6">{currentQuestion.question}</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-3" ref={verseContainerRef}>
-                <h3 className="text-lg font-medium text-foreground/80">Verses</h3>
-                {verses.map((verse, index) => (
-                  <motion.div 
-                    key={index}
-                    id={`dropzone-${verse}`}
-                    className={`p-4 rounded-xl border-2 transition-all ${
-                      dragItems[verse] ? 'border-primary bg-primary/10' : 'border-border bg-background'
-                    }`}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ 
-                      opacity: 1, 
-                      x: 0,
-                      transition: { delay: index * 0.1 } 
-                    }}
-                  >
-                    <div className="flex justify-between items-center">
-                      <p className="text-foreground">{verse}</p>
-                      {dragItems[verse] && (
-                        <motion.div 
-                          initial={{ scale: 0.8, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          className="bg-primary/20 px-3 py-1 rounded-lg text-primary font-medium"
-                        >
-                          {dragItems[verse]}
-                        </motion.div>
-                      )}
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-              
-              <div className="space-y-3 relative" style={{ minHeight: '200px' }}>
-                <h3 className="text-lg font-medium text-foreground/80">Drag the correct book</h3>
-                {options.map((option, index) => {
-                  // Skip options that are already matched
-                  if (Object.values(dragItems).includes(option)) return null;
-                  
-                  return (
-                    <DraggableItem
+          <DndContext 
+            sensors={sensors} 
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="space-y-6">
+              <h2 className="text-xl md:text-2xl font-fredoka text-foreground mb-6">{currentQuestion.question}</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <h3 className="text-lg font-medium text-foreground/80">Verses</h3>
+                  {verses.map((verse, index) => (
+                    <DroppableArea
                       key={index}
-                      onDragEnd={(x, y) => handleDragEnd(option, x, y)}
-                    >
-                      <motion.div
-                        id={`drag-item-${option}`}
-                        className="p-3 rounded-xl bg-lemon-yellow/20 text-foreground font-medium text-center shadow-playful"
-                        whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ 
-                          opacity: 1, 
-                          y: 0,
-                          transition: { delay: 0.3 + index * 0.1 } 
-                        }}
-                      >
-                        {option}
-                      </motion.div>
-                    </DraggableItem>
-                  );
-                })}
+                      id={`dropzone-${verse}`}
+                      isActive={true}
+                      verse={verse}
+                      matchedOption={dragItems[verse]}
+                      index={index}
+                    />
+                  ))}
+                </div>
+                
+                <div className="space-y-3 relative min-h-[200px]">
+                  <h3 className="text-lg font-medium text-foreground/80">Drag the correct book</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {options.map((option, index) => {
+                      // Skip options that are already matched
+                      if (Object.values(dragItems).includes(option)) return null;
+                      
+                      return (
+                        <DraggableItem
+                          key={index}
+                          id={`draggable-${option}`}
+                          index={index}
+                          disabled={showFeedback}
+                        >
+                          {option}
+                        </DraggableItem>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          </DndContext>
         );
         
       case 'true-false':
@@ -817,6 +1001,390 @@ export default function PlayGame({ params }: { params: { gameId: string } }) {
           </div>
         );
         
+      case 'single-match-draggable':
+        const singleMatchData = currentQuestion.correctAnswer as SingleMatchDraggableAnswer;
+        return (
+          <DndContext 
+            sensors={sensors} 
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="space-y-6">
+              <h2 className="text-xl md:text-2xl font-fredoka text-foreground mb-6">{currentQuestion.question}</h2>
+              <div className="grid grid-cols-1 gap-6">
+                <div className="flex justify-center mb-4">
+                  {singleMatchAnswer === null ? (
+                    <DraggableItem
+                      id={`draggable-${singleMatchData.draggableItem}`}
+                      index={0}
+                      disabled={showFeedback}
+                    >
+                      {singleMatchData.draggableItem}
+                    </DraggableItem>
+                  ) : (
+                    <div className="p-3 text-center">{singleMatchData.draggableItem}</div>
+                  )}
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  {singleMatchData.options.map((option, index) => (
+                    <div
+                      key={index}
+                      className={`relative ${singleMatchAnswer === option ? 'opacity-100' : 'opacity-100'}`}
+                    >
+                      <div 
+                        className={`p-4 rounded-xl border-2 transition-all ${
+                          singleMatchAnswer === option 
+                            ? 'border-primary bg-primary/10 cursor-pointer' 
+                            : 'border-border bg-background'
+                        }`}
+                        onClick={() => {
+                          if (singleMatchAnswer === option && !showFeedback) {
+                            handleRemoveSingleMatch();
+                          }
+                        }}
+                      >
+                        <div className="flex justify-between items-center">
+                          <p className="text-foreground">{option}</p>
+                          {singleMatchAnswer === option && (
+                            <motion.div 
+                              initial={{ scale: 0.8, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              className="flex items-center"
+                            >
+                              <span className="bg-primary/20 px-3 py-1 rounded-lg text-primary font-medium mr-2">
+                                {singleMatchData.draggableItem}
+                              </span>
+                              {!showFeedback && (
+                                <X className="w-4 h-4 text-foreground/60 hover:text-foreground" />
+                              )}
+                            </motion.div>
+                          )}
+                        </div>
+                      </div>
+                      {singleMatchAnswer !== option && (
+                        <div className="absolute inset-0 pointer-events-none">
+                          <DroppableArea
+                            id={`dropzone-${option}`}
+                            isActive={!showFeedback && singleMatchAnswer === null}
+                            verse={option}
+                            matchedOption={null}
+                            index={index}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </DndContext>
+        );
+      
+      case 'multiple-match-draggable':
+        const multipleMatchData = currentQuestion.correctAnswer as MultipleMatchDraggableAnswer;
+        return (
+          <DndContext 
+            sensors={sensors} 
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="space-y-6">
+              <h2 className="text-xl md:text-2xl font-fredoka text-foreground mb-6">{currentQuestion.question}</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <h3 className="text-lg font-medium text-foreground/80">Items to Classify</h3>
+                  <div className="space-y-2">
+                    {multipleMatchData.draggableItems.map((item, index) => (
+                      multipleMatchAnswers[item] === null && (
+                        <DraggableItem
+                          key={index}
+                          id={`draggable-${item}`}
+                          index={index}
+                          disabled={showFeedback}
+                        >
+                          {item}
+                        </DraggableItem>
+                      )
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <h3 className="text-lg font-medium text-foreground/80">Categories</h3>
+                  <div className="space-y-3">
+                    {multipleMatchData.dropZones.map((zone, index) => (
+                      <div key={index} className="relative">
+                        <motion.div
+                          className="p-4 rounded-xl border-2 border-border bg-background"
+                          initial={{ opacity: 0, x: 10 }}
+                          animate={{ 
+                            opacity: 1, 
+                            x: 0,
+                            transition: { delay: index * 0.1 } 
+                          }}
+                        >
+                          <div className="flex flex-col">
+                            <div className="font-medium mb-2">{zone}</div>
+                            <div className="min-h-[50px]">
+                              {Object.entries(multipleMatchAnswers).map(([item, mappedZone], itemIndex) => (
+                                mappedZone === zone && (
+                                  <motion.div
+                                    key={itemIndex}
+                                    className="p-2 mb-1 rounded-lg bg-primary/10 text-primary flex justify-between items-center"
+                                    initial={{ scale: 0.8, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    onClick={() => {
+                                      if (!showFeedback) {
+                                        handleRemoveMultipleMatchItem(item);
+                                      }
+                                    }}
+                                  >
+                                    <span>{item}</span>
+                                    {!showFeedback && (
+                                      <X className="w-4 h-4 text-foreground/60 hover:text-foreground cursor-pointer" />
+                                    )}
+                                  </motion.div>
+                                )
+                              ))}
+                            </div>
+                          </div>
+                        </motion.div>
+                        <div className="absolute inset-0 pointer-events-none">
+                          <DroppableArea
+                            id={`dropzone-${zone}`}
+                            isActive={!showFeedback}
+                            verse={zone}
+                            matchedOption={null}
+                            index={index}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </DndContext>
+        );
+      
+      case 'multiple-match-true-false-draggable':
+        const trueFalseData = currentQuestion.correctAnswer as MultipleMatchTrueFalseDraggableAnswer;
+        return (
+          <DndContext 
+            sensors={sensors} 
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="space-y-6">
+              <h2 className="text-xl md:text-2xl font-fredoka text-foreground mb-6">{currentQuestion.question}</h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <h3 className="text-lg font-medium text-foreground/80">Statements</h3>
+                  <div className="space-y-2">
+                    {trueFalseData.statements.map((statement, index) => (
+                      trueFalseAnswers[statement] === null && (
+                        <DraggableItem
+                          key={index}
+                          id={`draggable-${statement}`}
+                          index={index}
+                          disabled={showFeedback}
+                        >
+                          {statement}
+                        </DraggableItem>
+                      )
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="relative">
+                    <motion.div
+                      className="p-4 rounded-xl border-2 border-soft-mint bg-soft-mint/10"
+                      whileHover={{ scale: 1.01 }}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                    >
+                      <div className="flex items-center mb-2">
+                        <Check className="w-5 h-5 text-soft-mint mr-2" />
+                        <h3 className="font-medium text-soft-mint">True</h3>
+                      </div>
+                      <div className="min-h-[80px]">
+                        {Object.entries(trueFalseAnswers).map(([statement, isTrue], idx) => (
+                          isTrue === true && (
+                            <motion.div
+                              key={idx}
+                              className="p-2 mb-1 rounded-lg bg-soft-mint/10 text-soft-mint flex justify-between items-center"
+                              initial={{ scale: 0.8, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              onClick={() => {
+                                if (!showFeedback) {
+                                  handleRemoveTrueFalseItem(statement);
+                                }
+                              }}
+                            >
+                              <span>{statement}</span>
+                              {!showFeedback && (
+                                <X className="w-4 h-4 text-soft-mint/60 hover:text-soft-mint cursor-pointer" />
+                              )}
+                            </motion.div>
+                          )
+                        ))}
+                      </div>
+                    </motion.div>
+                    <div className="absolute inset-0 pointer-events-none">
+                      <DroppableArea
+                        id={`dropzone-true`}
+                        isActive={!showFeedback}
+                        verse="True"
+                        matchedOption={null}
+                        index={0}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="relative">
+                    <motion.div
+                      className="p-4 rounded-xl border-2 border-light-coral bg-light-coral/10"
+                      whileHover={{ scale: 1.01 }}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0, transition: { delay: 0.1 } }}
+                    >
+                      <div className="flex items-center mb-2">
+                        <X className="w-5 h-5 text-light-coral mr-2" />
+                        <h3 className="font-medium text-light-coral">False</h3>
+                      </div>
+                      <div className="min-h-[80px]">
+                        {Object.entries(trueFalseAnswers).map(([statement, isTrue], idx) => (
+                          isTrue === false && (
+                            <motion.div
+                              key={idx}
+                              className="p-2 mb-1 rounded-lg bg-light-coral/10 text-light-coral flex justify-between items-center"
+                              initial={{ scale: 0.8, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              onClick={() => {
+                                if (!showFeedback) {
+                                  handleRemoveTrueFalseItem(statement);
+                                }
+                              }}
+                            >
+                              <span>{statement}</span>
+                              {!showFeedback && (
+                                <X className="w-4 h-4 text-light-coral/60 hover:text-light-coral cursor-pointer" />
+                              )}
+                            </motion.div>
+                          )
+                        ))}
+                      </div>
+                    </motion.div>
+                    <div className="absolute inset-0 pointer-events-none">
+                      <DroppableArea
+                        id={`dropzone-false`}
+                        isActive={!showFeedback}
+                        verse="False"
+                        matchedOption={null}
+                        index={1}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </DndContext>
+        );
+      
+      case 'fill-in-the-blanks-draggable':
+        const fillBlanksData = currentQuestion.correctAnswer as FillInTheBlanksDraggableAnswer;
+        
+        // Process the sentence template to render with blanks
+        const parts = fillBlanksData.sentenceTemplate.split(/(\{blank\d+\})/g);
+        
+        return (
+          <DndContext 
+            sensors={sensors} 
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="space-y-6">
+              <h2 className="text-xl md:text-2xl font-fredoka text-foreground mb-6">{currentQuestion.question}</h2>
+              
+              <div className="p-4 bg-background rounded-xl border-2 border-border">
+                <div className="text-lg leading-relaxed flex flex-wrap items-center">
+                  {parts.map((part, index) => {
+                    const blankMatch = part.match(/\{(blank\d+)\}/);
+                    
+                    if (blankMatch) {
+                      const blankId = blankMatch[1];
+                      const filledWord = blankAnswers[blankId];
+                      
+                      return (
+                        <div key={index} className="inline-block mx-1 my-1">
+                          {filledWord ? (
+                            <motion.div
+                              className="px-3 py-1 bg-primary/10 text-primary font-medium rounded-lg flex items-center"
+                              initial={{ scale: 0.9 }}
+                              animate={{ scale: 1 }}
+                              onClick={() => {
+                                if (!showFeedback) {
+                                  handleRemoveBlankWord(blankId);
+                                }
+                              }}
+                            >
+                              <span>{filledWord}</span>
+                              {!showFeedback && (
+                                <X className="w-4 h-4 ml-2 text-primary/60 hover:text-primary cursor-pointer" />
+                              )}
+                            </motion.div>
+                          ) : (
+                            <div className="relative">
+                              <div className="w-24 h-8 border-2 border-dashed border-border rounded-lg flex items-center justify-center">
+                                <span className="text-foreground/30">_______</span>
+                              </div>
+                              <div className="absolute inset-0">
+                                <DroppableArea
+                                  id={`dropzone-${blankId}`}
+                                  isActive={!showFeedback}
+                                  verse=""
+                                  matchedOption={null}
+                                  index={index}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+                    
+                    return <span key={index}>{part}</span>;
+                  })}
+                </div>
+              </div>
+              
+              <div className="mt-6">
+                <h3 className="text-lg font-medium text-foreground/80 mb-3">Available Words</h3>
+                <div className="flex flex-wrap gap-2">
+                  {fillBlanksData.options.map((word, index) => {
+                    // Skip words that are already placed in blanks
+                    if (Object.values(blankAnswers).includes(word)) return null;
+                    
+                    return (
+                      <DraggableItem
+                        key={index}
+                        id={`draggable-${word}`}
+                        index={index}
+                        disabled={showFeedback}
+                      >
+                        {word}
+                      </DraggableItem>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </DndContext>
+        );
+                
       default:
         return <div>Unknown question type</div>;
     }
@@ -857,6 +1425,18 @@ export default function PlayGame({ params }: { params: { gameId: string } }) {
       case 'single-answer-drag-drop':
       case 'multiple-answer-drag-drop':
         isDisabled = Object.values(dragItems).some(value => value === null);
+        break;
+      case 'single-match-draggable':
+        isDisabled = singleMatchAnswer === null;
+        break;
+      case 'multiple-match-draggable':
+        isDisabled = Object.keys(multipleMatchAnswers).length === 0 || Object.values(multipleMatchAnswers).some(value => value === null);
+        break;
+      case 'multiple-match-true-false-draggable':
+        isDisabled = Object.keys(trueFalseAnswers).length === 0 || Object.values(trueFalseAnswers).some(value => value === null);
+        break;
+      case 'fill-in-the-blanks-draggable':
+        isDisabled = Object.keys(blankAnswers).length === 0 || Object.values(blankAnswers).some(value => value === null);
         break;
     }
     
@@ -950,14 +1530,9 @@ export default function PlayGame({ params }: { params: { gameId: string } }) {
             className="mb-4"
           >
             <h4 className="font-medium text-foreground mb-1">Correct answer:</h4>
-            <p className="text-primary font-medium">
-              {Array.isArray(currentQuestion.correctAnswer) 
-                ? currentQuestion.correctAnswer.join(', ')
-                : typeof currentQuestion.correctAnswer === 'object'
-                  ? JSON.stringify(currentQuestion.correctAnswer)
-                  : String(currentQuestion.correctAnswer)
-              }
-            </p>
+            <pre className="text-primary font-medium whitespace-pre-line">
+              {formatCorrectAnswer(currentQuestion.type, currentQuestion.correctAnswer)}
+            </pre>
           </motion.div>
         )}
         

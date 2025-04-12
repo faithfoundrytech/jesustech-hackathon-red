@@ -2,13 +2,13 @@ import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 import { IUser } from './User';
 import { IGame } from './Game';
 import { IChurch } from './Church';
-import { IQuestion } from './Question';
+import { Answer, IQuestion } from './Question';
 
 export type UserGameStatus = 'playing' | 'completed' | 'archived';
 
 interface UserAnswer {
   questionId: Types.ObjectId;
-  userAnswer: string | string[] | number;
+  userAnswer: Answer
   correct: boolean;
   pointsEarned: number;
 }
@@ -20,6 +20,7 @@ export interface IUserGame extends Document {
   churchId: Types.ObjectId;
   answers: UserAnswer[];
   score: number;
+  totalPointsEarned: number;
   status: UserGameStatus;
   firstPlay: boolean;
   startedAt: Date;
@@ -41,6 +42,7 @@ const UserGameSchema: Schema<IUserGame> = new Schema(
       pointsEarned: { type: Number, default: 0, required: true }
     }],
     score: { type: Number, default: 0, required: true },
+    totalPointsEarned: { type: Number, default: 0, required: true },
     status: { 
       type: String, 
       enum: ['playing', 'completed', 'archived'],

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Church, Play, ChevronRight, Users, Clock, Award, BookOpen } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Types from our models
@@ -132,6 +133,17 @@ export default function GameList() {
             className="rounded-2xl overflow-hidden shadow-playful"
           >
             <div className={`${churchBg} p-6 relative overflow-hidden`}>
+              {/* Background image */}
+              <div className="absolute inset-0 z-0">
+                <Image
+                  src="/jesus-tech-hackathon.png"
+                  alt={`${church.name} background`}
+                  fill
+                  className="object-cover mix-blend-overlay opacity-25"
+                  priority={index === 0}
+                />
+              </div>
+              
               {/* Background decorative elements */}
               <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
               <div className="absolute bottom-0 left-10 w-16 h-16 bg-white opacity-10 rounded-full translate-y-1/2"></div>
@@ -167,66 +179,80 @@ export default function GameList() {
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.3, delay: 0.2 + gameIndex * 0.1 }}
-                      className="bg-background rounded-xl p-5 hover:shadow-playful-hover transition-all duration-200 group border border-border"
+                      className="bg-background rounded-xl overflow-hidden hover:shadow-playful-hover transition-all duration-200 group border border-border"
                     >
                       <Link href={`/play/${game._id}`} className="block">
-                        <div className="flex justify-between items-start mb-4">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-2">
-                              {game.status === 'live' && (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full bg-soft-mint/30 text-deep-navy text-xs font-medium">
-                                  <span className="w-1.5 h-1.5 bg-soft-mint rounded-full mr-1.5 animate-pulse"></span>
-                                  Live
-                                </span>
-                              )}
-                              {game.metadata.preacher && (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full bg-baby-blue/30 text-deep-navy text-xs font-medium">
-                                  {game.metadata.preacher}
-                                </span>
-                              )}
-                            </div>
-                            
-                            <h3 className="font-bold font-fredoka text-lg text-foreground group-hover:text-primary transition-colors duration-200">
-                              {game.title}
-                            </h3>
-                            
-                            {game.description && (
-                              <p className="text-sm text-foreground/70 mt-1 line-clamp-2">
-                                {game.description}
-                              </p>
+                        {/* Game cover image */}
+                        <div className="relative h-40 w-full overflow-hidden">
+                          <Image
+                            src="/game.png"
+                            alt={game.title}
+                            fill
+                            className="object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background opacity-70"></div>
+                          
+                          {/* Status badges positioned over the image */}
+                          <div className="absolute top-3 left-3 flex items-center space-x-2">
+                            {game.status === 'live' && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full bg-soft-mint/70 backdrop-blur-sm text-white text-xs font-medium">
+                                <span className="w-1.5 h-1.5 bg-white rounded-full mr-1.5 animate-pulse"></span>
+                                Live
+                              </span>
+                            )}
+                            {game.metadata.preacher && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full bg-baby-blue/70 backdrop-blur-sm text-white text-xs font-medium">
+                                {game.metadata.preacher}
+                              </span>
                             )}
                           </div>
-                          
-                          <div className="flex-shrink-0 ml-4">
-                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                              <Play className="w-5 h-5 text-primary" />
+                        </div>
+                        
+                        <div className="p-5">
+                          <div className="flex justify-between items-start mb-3">
+                            <div className="flex-1">
+                              <h3 className="font-bold font-fredoka text-lg text-foreground group-hover:text-primary transition-colors duration-200">
+                                {game.title}
+                              </h3>
+                              
+                              {game.description && (
+                                <p className="text-sm text-foreground/70 mt-1 line-clamp-2">
+                                  {game.description}
+                                </p>
+                              )}
+                            </div>
+                            
+                            <div className="flex-shrink-0 ml-4">
+                              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                                <Play className="w-5 h-5 text-primary" />
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        
-                        <div className="flex flex-wrap gap-2 mt-3 mb-4">
-                          {game.metadata.mainVerses?.map((verse, i) => (
-                            <span 
-                              key={i} 
-                              className="inline-flex items-center px-2 py-1 rounded-full bg-lemon-yellow/30 text-foreground text-xs"
-                            >
-                              <BookOpen className="w-3 h-3 mr-1" /> {verse}
-                            </span>
-                          ))}
-                        </div>
-                        
-                        <div className="flex items-center justify-between pt-3 border-t border-border">
-                          <div className="flex items-center text-foreground/60 text-sm">
-                            <Clock className="w-4 h-4 mr-1" /> 5-10 min
+                          
+                          <div className="flex flex-wrap gap-2 mb-4">
+                            {game.metadata.mainVerses?.map((verse, i) => (
+                              <span 
+                                key={i} 
+                                className="inline-flex items-center px-2 py-1 rounded-full bg-lemon-yellow/30 text-foreground text-xs"
+                              >
+                                <BookOpen className="w-3 h-3 mr-1" /> {verse}
+                              </span>
+                            ))}
                           </div>
                           
-                          <div className="flex items-center">
-                            <span className="text-primary font-medium text-sm flex items-center mr-3">
-                              <Award className="w-4 h-4 mr-1" /> {game.pointsAvailable} pts
-                            </span>
-                            <span className="text-primary text-sm font-medium flex items-center group-hover:translate-x-1 transition-transform duration-200">
-                              Play <ChevronRight className="w-4 h-4 ml-0.5" />
-                            </span>
+                          <div className="flex items-center justify-between pt-3 border-t border-border">
+                            <div className="flex items-center text-foreground/60 text-sm">
+                              <Clock className="w-4 h-4 mr-1" /> 5-10 min
+                            </div>
+                            
+                            <div className="flex items-center">
+                              <span className="text-primary font-medium text-sm flex items-center mr-3">
+                                <Award className="w-4 h-4 mr-1" /> {game.pointsAvailable} pts
+                              </span>
+                              <span className="text-primary text-sm font-medium flex items-center group-hover:translate-x-1 transition-transform duration-200">
+                                Play <ChevronRight className="w-4 h-4 ml-0.5" />
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </Link>
@@ -262,29 +288,28 @@ function GameListSkeleton() {
           <div className="bg-card p-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[1, 2, 3].map(j => (
-                <div key={j} className="bg-background rounded-xl p-5 border border-border">
-                  <div className="flex justify-between mb-4">
-                    <div className="w-3/5">
-                      <div className="flex gap-2 mb-2">
-                        <Skeleton className="h-5 w-16 rounded-full" />
-                        <Skeleton className="h-5 w-20 rounded-full" />
+                <div key={j} className="bg-background rounded-xl overflow-hidden border border-border">
+                  <Skeleton className="h-40 w-full" />
+                  <div className="p-5">
+                    <div className="flex justify-between mb-4">
+                      <div className="w-3/5">
+                        <Skeleton className="h-6 w-full mb-2" />
+                        <Skeleton className="h-4 w-full" />
                       </div>
-                      <Skeleton className="h-6 w-full mb-2" />
-                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-12 w-12 rounded-full" />
                     </div>
-                    <Skeleton className="h-12 w-12 rounded-full" />
-                  </div>
-                  
-                  <div className="flex gap-2 mb-4">
-                    <Skeleton className="h-6 w-20 rounded-full" />
-                    <Skeleton className="h-6 w-24 rounded-full" />
-                  </div>
-                  
-                  <div className="flex justify-between pt-3 border-t border-border">
-                    <Skeleton className="h-4 w-20" />
-                    <div className="flex gap-3">
-                      <Skeleton className="h-4 w-16" />
-                      <Skeleton className="h-4 w-12" />
+                    
+                    <div className="flex gap-2 mb-4">
+                      <Skeleton className="h-6 w-20 rounded-full" />
+                      <Skeleton className="h-6 w-24 rounded-full" />
+                    </div>
+                    
+                    <div className="flex justify-between pt-3 border-t border-border">
+                      <Skeleton className="h-4 w-20" />
+                      <div className="flex gap-3">
+                        <Skeleton className="h-4 w-16" />
+                        <Skeleton className="h-4 w-12" />
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -4,17 +4,25 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { motion } from "framer-motion";
-import { Play, Award, Zap, Calendar, ChevronRight, BookOpen, Star, Trophy } from "lucide-react";
+import { Play, Award, Zap, Calendar, ChevronRight, BookOpen, Star, Trophy, ExternalLink } from "lucide-react";
 import MenuBar from "@/components/MenuBar";
 import GameList from "@/components/GameList";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import Image from "next/image";
+
+interface UserMetrics {
+  gamesCount: number;
+  pointsBalance: number;
+}
 
 export default function HomePage() {
   const { isLoaded, isSignedIn } = useAuth();
   const { user } = useUser();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
+  const [metrics, setMetrics] = useState<UserMetrics>({ gamesCount: 0, pointsBalance: 0 });
+  const [isMetricsLoading, setIsMetricsLoading] = useState(true);
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
@@ -23,6 +31,33 @@ export default function HomePage() {
       setIsLoading(false);
     }
   }, [isLoaded, isSignedIn, router]);
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      fetchUserMetrics();
+    }
+  }, [isLoaded, isSignedIn]);
+
+  const fetchUserMetrics = async () => {
+    try {
+      setIsMetricsLoading(true);
+      const response = await fetch('/api/games/user/metrics');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch user metrics');
+      }
+      
+      const data = await response.json();
+      setMetrics({
+        gamesCount: data.gamesCount || 0,
+        pointsBalance: data.pointsBalance || 0
+      });
+    } catch (error) {
+      console.error('Error fetching metrics:', error);
+    } finally {
+      setIsMetricsLoading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -46,8 +81,17 @@ export default function HomePage() {
     <div className="min-h-screen bg-background text-foreground pb-20">
       <MenuBar />
       
-      {/* Welcome Banner */}
-      <div className="pt-20 pb-6 bg-gradient-playful relative overflow-hidden">
+      {/* Welcome Banner with Background Image */}
+      <div className="pt-20 pb-6 relative overflow-hidden">
+        <div className="absolute inset-0 z-0 bg-gradient-playful">
+          <Image
+            src="/jesus-tech-hackathon.png"
+            alt="Background"
+            fill
+            className="object-cover mix-blend-overlay opacity-20" 
+            priority
+          />
+        </div>
         <div className="absolute -right-12 -top-12 w-64 h-64 bg-white opacity-10 rounded-full"></div>
         <div className="absolute left-12 bottom-0 w-32 h-32 bg-white opacity-10 rounded-full"></div>
         
@@ -70,6 +114,22 @@ export default function HomePage() {
               >
                 Ready to deepen your sermon knowledge through fun quizzes and games?
               </motion.p>
+              
+              <motion.a
+                href="https://blessed-marketplace-glow.lovable.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex items-center px-6 py-3 rounded-xl text-white font-medium shadow-lg hover:shadow-xl transition-all bg-gradient-to-r from-warm-peach via-lemon-yellow to-soft-mint"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Trophy className="w-5 h-5 mr-2" />
+                Redeem Points In Shop
+                <ExternalLink className="w-4 h-4 ml-2" />
+              </motion.a>
             </div>
 
             <motion.div
@@ -82,15 +142,27 @@ export default function HomePage() {
                 <p className="text-white/80 text-sm font-medium mb-1">Total Points</p>
                 <div className="flex items-center">
                   <Trophy className="w-5 h-5 text-lemon-yellow mr-2" />
-                  <span className="text-white text-xl font-bold">500</span>
+                  <span className="text-white text-xl font-bold">
+                    {isMetricsLoading ? (
+                      <Skeleton className="h-6 w-14 bg-white/20" />
+                    ) : (
+                      metrics.pointsBalance
+                    )}
+                  </span>
                 </div>
               </div>
               
               <div className="bg-white/20 backdrop-blur-sm px-4 py-3 rounded-2xl">
-                <p className="text-white/80 text-sm font-medium mb-1">Current Streak</p>
+                <p className="text-white/80 text-sm font-medium mb-1">Games Played</p>
                 <div className="flex items-center">
                   <Zap className="w-5 h-5 text-warm-peach mr-2" />
-                  <span className="text-white text-xl font-bold">3 days</span>
+                  <span className="text-white text-xl font-bold">
+                    {isMetricsLoading ? (
+                      <Skeleton className="h-6 w-14 bg-white/20" />
+                    ) : (
+                      metrics.gamesCount
+                    )}
+                  </span>
                 </div>
               </div>
             </motion.div>
@@ -98,159 +170,12 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Daily Streaks */}
-      <div className="max-w-6xl mx-auto px-4">
-        <motion.div 
-          className="bg-gradient-peach rounded-3xl p-4 -mt-6 shadow-playful relative z-20 mb-10"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-bold font-fredoka text-deep-navy">Keep your streak alive!</h3>
-            <span className="flex items-center text-deep-navy/70 text-sm font-medium">
-              <Calendar className="w-4 h-4 mr-1" /> Day 3 of 7
-            </span>
-          </div>
-          
-          <div className="flex space-x-2">
-            {[1, 2, 3, 4, 5, 6, 7].map((day) => (
-              <div key={day} className="flex-1 relative">
-                <div className={`h-2.5 rounded-full ${day <= 3 ? 'bg-deep-navy/80' : 'bg-deep-navy/20'}`}></div>
-                {day <= 3 && (
-                  <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-deep-navy rounded-full flex items-center justify-center">
-                    <div className="w-2 h-2 bg-white rounded-full"></div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-          
-          <div className="mt-4 text-sm text-deep-navy/70 text-center">
-            Play daily to earn a <span className="font-bold">50 point bonus</span> at the end of the week!
-          </div>
-        </motion.div>
+      <div className="max-w-6xl mx-auto px-4 pt-12">
+       
 
-        {/* Featured Game Card */}
-        <motion.div 
-          className="mb-10"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold font-fredoka text-foreground flex items-center">
-              <Star className="text-lemon-yellow w-7 h-7 mr-2 animate-pulse-custom" />
-              Featured Game
-            </h2>
-            <button 
-              onClick={() => router.push('/all-games')}
-              className="text-primary font-medium text-sm flex items-center"
-            >
-              See all games <ChevronRight className="w-4 h-4 ml-1" />
-            </button>
-          </div>
-          
-          <Card className="border-none overflow-hidden shadow-playful hover:shadow-playful-hover transition-shadow duration-300">
-            <div className="bg-gradient-mint relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
-              
-              <div className="p-6 relative z-10">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  <div>
-                    <div className="flex items-center mb-2">
-                      <div className="bg-white/30 backdrop-blur-sm px-2 py-1 rounded-full text-xs font-medium text-deep-navy mr-2">
-                        Pastor John
-                      </div>
-                      <div className="bg-white/30 backdrop-blur-sm px-2 py-1 rounded-full text-xs font-medium text-deep-navy">
-                        <BookOpen className="w-3 h-3 inline mr-1" /> John 3:16
-                      </div>
-                    </div>
-                    
-                    <h3 className="text-xl font-bold mb-2 text-deep-navy">Faith Foundations Challenge</h3>
-                    <p className="text-deep-navy/80 mb-4 max-w-xl">Test your knowledge on the foundations of faith with this week's engaging sermon-based quiz.</p>
-                    
-                    <div className="flex items-center text-deep-navy/70 text-sm mb-4">
-                      <Award className="w-4 h-4 mr-1" /> 
-                      Earn up to <span className="font-bold text-deep-navy mx-1">100 points</span> and unlock special rewards!
-                    </div>
-                  </div>
-                  
-                  <div className="flex-shrink-0">
-                    <motion.div 
-                      className="relative w-20 h-20 md:w-24 md:h-24 rounded-full bg-gradient-playful shadow-playful flex items-center justify-center"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <div className="absolute inset-1 rounded-full bg-white/90"></div>
-                      <Play className="w-8 h-8 text-soft-purple relative z-10" />
-                    </motion.div>
-                  </div>
-                </div>
-                
-                <button 
-                  onClick={() => router.push('/play/featured')}
-                  className="w-full mt-4 bg-deep-navy text-white py-4 rounded-xl text-lg font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center"
-                >
-                  <Play className="h-5 w-5 mr-2" />
-                  Start Playing
-                </button>
-              </div>
-            </div>
-          </Card>
-        </motion.div>
+      
 
-        {/* Quick Stats Cards */}
-        <motion.div 
-          className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-        >
-          <Card className="border-none shadow-playful hover:shadow-playful-hover transition-shadow duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <div className="w-12 h-12 rounded-full bg-soft-purple/10 flex items-center justify-center mr-4">
-                  <Trophy className="h-6 w-6 text-soft-purple" />
-                </div>
-                <div>
-                  <p className="text-foreground/70 text-sm mb-1">Total Points</p>
-                  <h3 className="text-2xl font-bold font-fredoka text-foreground">500</h3>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="border-none shadow-playful hover:shadow-playful-hover transition-shadow duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <div className="w-12 h-12 rounded-full bg-warm-peach/10 flex items-center justify-center mr-4">
-                  <Zap className="h-6 w-6 text-warm-peach" />
-                </div>
-                <div>
-                  <p className="text-foreground/70 text-sm mb-1">Games Played</p>
-                  <h3 className="text-2xl font-bold font-fredoka text-foreground">12</h3>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="border-none shadow-playful hover:shadow-playful-hover transition-shadow duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <div className="w-12 h-12 rounded-full bg-baby-blue/20 flex items-center justify-center mr-4">
-                  <BookOpen className="h-6 w-6 text-baby-blue" />
-                </div>
-                <div>
-                  <p className="text-foreground/70 text-sm mb-1">Bible Verses</p>
-                  <h3 className="text-2xl font-bold font-fredoka text-foreground">37</h3>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Recent Games */}
+        {/* Available Games */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

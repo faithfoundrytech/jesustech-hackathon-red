@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SignOutButton, useUser } from "@clerk/nextjs";
+import { SignOutButton, UserButton, useUser } from "@clerk/nextjs";
 import { Menu, X } from "lucide-react";
 import ThemeSwitcher from "./ThemeSwitcher";
 
@@ -44,11 +44,8 @@ export default function MenuBar() {
               <div className="text-foreground mr-2">
                 {user?.firstName || "User"}
               </div>
-              <SignOutButton>
-                <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-semibold shadow-md hover:shadow-lg transition-shadow">
-                  Sign Out
-                </button>
-              </SignOutButton>
+              <UserButton />
+          
             </div>
 
             {/* Mobile menu button */}
@@ -73,13 +70,7 @@ export default function MenuBar() {
             <MobileNavLink href="/churches/manage" onClick={() => setIsMenuOpen(false)}>Manage Church</MobileNavLink>
             <MobileNavLink href="/rewards" onClick={() => setIsMenuOpen(false)}>Rewards</MobileNavLink>
             
-            <div className="pt-2 border-t border-border/10">
-              <SignOutButton>
-                <button className="w-full bg-primary text-primary-foreground py-3 rounded-xl text-sm font-semibold shadow-md">
-                  Sign Out
-                </button>
-              </SignOutButton>
-            </div>
+            <UserButton />
           </div>
         </div>
       )}

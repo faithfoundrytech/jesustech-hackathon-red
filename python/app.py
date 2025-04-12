@@ -77,6 +77,7 @@ class QuestionSchema(BaseModel):
     learning_points: List[str] = []
 
 def call_openrouter(prompt: str, model: str = "google/gemini-2.0-flash-001") -> str:
+    # Add timeout to prevent hanging requests
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
@@ -91,10 +92,12 @@ def call_openrouter(prompt: str, model: str = "google/gemini-2.0-flash-001") -> 
     
     try:
         app.logger.debug(f"Calling OpenRouter API with model: {model}")
+        # Increase timeout parameter to prevent early timeouts
         response = requests.post(
             f"{OPENROUTER_BASE_URL}/chat/completions",
             headers=headers,
-            json=data
+            json=data,
+            timeout=120  # Increase timeout to 120 seconds
         )
         
         # Log API response status for debugging
@@ -549,13 +552,13 @@ def process_sermon():
                 app.logger.info(f"Extracted designed question JSON: {json_content}")
                 question_dict = json.loads(json_content)
                 
-                # Store question in database - update to use QuestionModel
+                # Update: Fix parameter names to match the Question model
                 question = QuestionModel(
                     game_id=game.id,
-                    question=question_dict['question'],
+                    text=question_dict['question'],  # Updated from 'question' to 'text'
                     correct_answer=question_dict['correct_answer'],
                     question_type=question_dict['question_type'],
-                    options=question_dict.get('fake_answers', []),  # Notice the change to match the JSON format
+                    options=question_dict.get('fake_answers', []),
                     hints=question_dict.get('hints', []),
                     learning_points=question_dict.get('learning_points', []),
                     difficulty=question_dict.get('difficulty', 'easy')
@@ -588,6 +591,7 @@ def process_sermon():
     finally:
         session.close()
 
+# Add memory optimization for large responses
 @app.route('/api/games/<int:game_id>', methods=['GET'])
 def get_game(game_id):
     session = Session()
@@ -607,7 +611,7 @@ def get_game(game_id):
                 "game_structure": game.game_structure,
                 "questions": [{
                     "id": q.id,
-                    "question": q.question,
+                    "question": q.text,  # Updated from q.question to q.text
                     "correct_answer": q.correct_answer,
                     "question_type": q.question_type,
                     "options": q.options,
